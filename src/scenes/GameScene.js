@@ -54,7 +54,8 @@ export default class GameScene extends Phaser.Scene {
     this.rangeRing = this.add.circle(0, 0, 10).setStrokeStyle(2, PALETTE.neonCyan, 0.8).setDepth(3).setVisible(false);
 
     this.input.on('pointermove', p => this.updateGhost(p));
-    this.input.on('pointerdown', p => this.tryPlace(p));
+    this.input.on('pointerdown', p => { sfx.unlock(); this.tryPlace(p); });
+    this.input.keyboard.on('keydown', () => sfx.unlock());
 
     this.scene.launch('UI');
     this.input.keyboard.on('keydown-SPACE', () => this.startWave());
@@ -143,6 +144,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   waveCleared() {
+    if (this.over) return;   // the last leak ended the game: no bell, no banner
     this.waveActive = false;
     const info = { wave: this.wave, leaks: this.leaksThisWave };
     this.events.emit('waveCleared', info);
@@ -157,21 +159,11 @@ export default class GameScene extends Phaser.Scene {
       this.time.delayedCall(2300, () => {
         if (this.over) return;
         this.banner('PERFECT WAVE', '#dfe6ee', 'THE NEXIOS SWORD IS YOURS — press S', false);
-        this.swordSprite(640, 470, 1.4).setAlpha(0).setDepth(31);
+        this.ui.swordSprite(640, 470, 1.4).setAlpha(0).setDepth(31);
       });
     }
     if (this.wave >= CONFIG.waves.count) { this.endGame(true); return; }
     this.game.events.emit('waveState', false);
-  }
-
-  // The GoT-style Nexios Sword with the Nexios wordmark etched on the blade.
-  swordSprite(x, y, scale) {
-    const blade = this.add.image(0, 0, 'sword');
-    const logo = this.add.image(40, 0, 'logo').setTint(0x1c2433);
-    logo.setScale(Math.min(110 / logo.width, 9 / logo.height));
-    const c = this.add.container(x, y, [blade, logo]).setScale(scale);
-    this.tweens.add({ targets: c, alpha: 1, duration: 300, hold: 1400, yoyo: true, onComplete: () => c.destroy() });
-    return c;
   }
 
   useSword() {
@@ -204,9 +196,7 @@ export default class GameScene extends Phaser.Scene {
     this.vans.push(spawnVan(this));
     this.game.events.emit('tokens', this.wallet.tokens);
     this.game.events.emit('pizza', CONFIG.pizza.cooldownMs);
-    const toast = this.add.text(640, 660, 'The kids ordered Pizza Hut. Extra sauce.', { fontFamily: 'monospace', fontSize: '20px', color: '#ffffff', stroke: '#d1201a', strokeThickness: 5 })
-      .setOrigin(0.5).setDepth(30);
-    this.tweens.add({ targets: toast, alpha: 0, y: 630, delay: 1800, duration: 600, onComplete: () => toast.destroy() });
+    this.ui.toast('The kids ordered Pizza Hut. Extra sauce.');
   }
 
   bossEntrance(e) {
@@ -237,15 +227,10 @@ export default class GameScene extends Phaser.Scene {
     for (const o of this.enemies) if (o.alive && o !== e) { this.puff(o.x, o.y, 0x8a3a3a); removeEnemy(o); }
   }
 
-  banner(text, color = '#ffffff', sub = '', withBell = true) {
-    const bell = this.add.image(640, 250, 'bell').setDepth(30).setScale(2).setAngle(-25).setVisible(withBell);
-    const t = this.add.text(640, 340, text, { fontFamily: 'monospace', fontSize: '48px', color, fontStyle: 'bold', stroke: '#000', strokeThickness: 6 })
-      .setOrigin(0.5).setDepth(30);
-    const st = this.add.text(640, 392, sub, { fontFamily: 'monospace', fontSize: '20px', color: '#ffffff', stroke: '#000', strokeThickness: 4 })
-      .setOrigin(0.5).setDepth(30);
-    this.tweens.add({ targets: bell, angle: 25, duration: 220, yoyo: true, repeat: 3, ease: 'Sine.easeInOut' });
-    this.tweens.add({ targets: [bell, t, st], alpha: 0, delay: 1800, duration: 500, onComplete: () => { bell.destroy(); t.destroy(); st.destroy(); } });
-  }
+  // Messages render in the UI scene, whose camera never rotates, so they stay readable in the Upside Down.
+  get ui() { return this.scene.get('UI'); }
+  banner(...a) { this.ui.banner(...a); }
+  tip(text) { this.ui.tip(text); }
 
   emitAll() {
     this.game.events.emit('tokens', this.wallet.tokens);
@@ -287,12 +272,6 @@ export default class GameScene extends Phaser.Scene {
       this.add.rectangle(x, y, 4, 4, 0xfff2c4).setDepth(1.7);
       if (i % 3 === 1) this.tweens.add({ targets: glow, alpha: 0.02, duration: 60, yoyo: true, repeat: -1, repeatDelay: Phaser.Math.Between(1500, 4000) });
     });
-  }
-
-  tip(text) {
-    const t = this.add.text(640, 660, text, { fontFamily: 'monospace', fontSize: '18px', color: '#ffc94a', stroke: '#000', strokeThickness: 5 })
-      .setOrigin(0.5).setDepth(30);
-    this.tweens.add({ targets: t, alpha: 0, delay: 4000, duration: 800, onComplete: () => t.destroy() });
   }
 
   drawBuildings() {
@@ -432,6 +411,6 @@ export default class GameScene extends Phaser.Scene {
     this.enemies = this.enemies.filter(e => e.alive);
     const hit = (t, d) => this.hit(t, d);
     for (const t of this.towers) stepTower(this, t, this.enemies, now, hit);
-    if (this.waveActive && this.pendingSpawns === 0 && this.enemies.length === 0) this.waveCleared();
+    if (!this.over && this.waveActive && this.pendingSpawns === 0 && this.enemies.length === 0) this.waveCleared();
   }
 }

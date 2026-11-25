@@ -62,6 +62,7 @@ export default class UIScene extends Phaser.Scene {
     const mute = this.add.text(1246, 28, sfx.isMuted() ? '🔇' : '🔊', { fontSize: '22px' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     mute.on('pointerdown', () => { sfx.setMuted(!sfx.isMuted()); mute.setText(sfx.isMuted() ? '🔇' : '🔊'); });
 
+    this.input.on('pointerdown', () => sfx.unlock());
     const ev = this.game.events;
     const on = (name, fn) => { ev.on(name, fn, this); this.events.once('shutdown', () => ev.off(name, fn, this)); };
     on('tokens', n => { this.tokens = n; this.tokensText.setText(`Tokens: ${n}`); this.refreshButtons(); this.refreshUpgrade(); });
@@ -126,4 +127,37 @@ export default class UIScene extends Phaser.Scene {
       b.icon.setAlpha(afford ? 1 : 0.35); b.label.setAlpha(afford ? 1 : 0.45);
     }
   }
+
+  banner(text, color = '#ffffff', sub = '', withBell = true) {
+    const bell = this.add.image(640, 250, 'bell').setDepth(30).setScale(2).setAngle(-25).setVisible(withBell);
+    const t = this.add.text(640, 340, text, { fontFamily: 'monospace', fontSize: '48px', color, fontStyle: 'bold', stroke: '#000', strokeThickness: 6 })
+      .setOrigin(0.5).setDepth(30);
+    const st = this.add.text(640, 392, sub, { fontFamily: 'monospace', fontSize: '20px', color: '#ffffff', stroke: '#000', strokeThickness: 4 })
+      .setOrigin(0.5).setDepth(30);
+    this.tweens.add({ targets: bell, angle: 25, duration: 220, yoyo: true, repeat: 3, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: [bell, t, st], alpha: 0, delay: 1800, duration: 500, onComplete: () => { bell.destroy(); t.destroy(); st.destroy(); } });
+  }
+
+  tip(text) {
+    const t = this.add.text(640, 660, text, { fontFamily: 'monospace', fontSize: '18px', color: '#ffc94a', stroke: '#000', strokeThickness: 5 })
+      .setOrigin(0.5).setDepth(30);
+    this.tweens.add({ targets: t, alpha: 0, delay: 4000, duration: 800, onComplete: () => t.destroy() });
+  }
+
+  // The GoT-style Nexios Sword with the Nexios wordmark etched on the blade.
+  swordSprite(x, y, scale) {
+    const blade = this.add.image(0, 0, 'sword');
+    const logo = this.add.image(40, 0, 'logo').setTint(0x1c2433);
+    logo.setScale(Math.min(110 / logo.width, 9 / logo.height));
+    const c = this.add.container(x, y, [blade, logo]).setScale(scale);
+    this.tweens.add({ targets: c, alpha: 1, duration: 300, hold: 1400, yoyo: true, onComplete: () => c.destroy() });
+    return c;
+  }
+
+  toast(text) {
+    const t = this.add.text(640, 660, text, { fontFamily: 'monospace', fontSize: '20px', color: '#ffffff', stroke: '#d1201a', strokeThickness: 5 })
+      .setOrigin(0.5).setDepth(30);
+    this.tweens.add({ targets: t, alpha: 0, y: 630, delay: 1800, duration: 600, onComplete: () => t.destroy() });
+  }
+
 }
