@@ -9,11 +9,15 @@ const CONFIG = {
   },
   startTokens: 160, baseHealth: 20,   // blocks double as walls, so the opening needs a few
   towers: {
-    slingshot: { cost: 25, range: 110, damage: 6,  fireMs: 400,  levels: [{ cost: 30, damage: 10 }, { cost: 50, damage: 16, range: 130 }] },
-    walkie:    { cost: 40, range: 90,  slow: 0.5,  slowMs: 1500, pulseMs: 1000, levels: [{ cost: 35, slow: 0.4 }, { cost: 55, slow: 0.3, range: 110 }] },
-    psychic:   { cost: 80, range: 160, damage: 45, fireMs: 1800, levels: [{ cost: 70, damage: 80 }, { cost: 110, damage: 130 }] },
-    lights:    { cost: 60, range: 80,  damage: 3,  stunMs: 600,  pulseMs: 3000, levels: [{ cost: 50, stunMs: 900 }, { cost: 80, stunMs: 1200, range: 100 }] },
+    slingshot: { cost: 25, range: 110, damage: 6,  fireMs: 400 },
+    walkie:    { cost: 40, range: 90,  slow: 0.5,  slowMs: 1500, pulseMs: 1000 },
+    psychic:   { cost: 80, range: 160, damage: 45, fireMs: 1800 },
+    lights:    { cost: 60, range: 80,  damage: 3,  stunMs: 600,  pulseMs: 3000 },
   },
+  // Kids level up from Lv1 (bought) to Lv10. Each level: +35% of starting damage, +3% range,
+  // walkie slows 0.025 harder (floor 0.25), lights stun 8% longer.
+  // Upgrade Lv L -> L+1 costs (0.75 + 0.25 x L) x the kid's price.
+  upgrade: { maxLevel: 10, damagePerLevel: 0.35, rangePerLevel: 0.03, slowPerLevel: 0.025, minSlow: 0.25, stunPerLevel: 0.08, costBase: 0.75, costStep: 0.25 },
   enemies: {
     crawler: { hp: 20, speed: 80,  reward: 4, leak: 1 },
     brute:   { hp: 90, speed: 42,  reward: 9, leak: 3 },

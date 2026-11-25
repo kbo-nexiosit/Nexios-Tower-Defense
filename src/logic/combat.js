@@ -47,17 +47,22 @@ export function canPlace(slot, towers, road, minRoadDist = 32, minTowerDist = 40
   return !towers.some(t => Math.hypot(t.x - slot.x, t.y - slot.y) < minTowerDist);
 }
 
+// level is 0-based: 0 = Lv1 (just bought), maxLevel-1 = Lv10.
 export function towerStats(type, level) {
-  const { levels, ...base } = CONFIG.towers[type];
-  const stats = { ...base };
-  for (let i = 0; i < level; i++) Object.assign(stats, levels[i]);
-  stats.cost = base.cost;
-  return stats;
+  const base = CONFIG.towers[type], U = CONFIG.upgrade;
+  const s = { ...base };
+  if (base.damage !== undefined) s.damage = base.damage * (1 + U.damagePerLevel * level);
+  s.range = base.range * (1 + U.rangePerLevel * level);
+  if (base.slow !== undefined) s.slow = Math.max(U.minSlow, base.slow - U.slowPerLevel * level);
+  if (base.stunMs !== undefined) s.stunMs = base.stunMs * (1 + U.stunPerLevel * level);
+  return s;
 }
 
+// Price of going from this level to the next, relative to the kid's price (null at max).
 export function upgradeCost(type, level) {
-  const next = CONFIG.towers[type].levels[level];
-  return next ? next.cost : null;
+  const U = CONFIG.upgrade;
+  if (level + 1 >= U.maxLevel) return null;
+  return Math.round(CONFIG.towers[type].cost * (U.costBase + U.costStep * (level + 1)));
 }
 
 export function applySlow(e, factor, ms, now) {

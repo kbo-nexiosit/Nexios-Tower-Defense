@@ -149,8 +149,8 @@ export default class UIScene extends Phaser.Scene {
     this.upBtn?.setVisible(show); this.upTxt?.setVisible(show);
     if (!show) return;
     const cost = upgradeCost(t.type, t.level);
-    if (cost === null) { this.upTxt.setText('MAX LEVEL'); this.upBtn.setAlpha(0.5); return; }
-    this.upTxt.setText(`UPGRADE ▲${t.level + 1}\n${cost} tok`);
+    if (cost === null) { this.upTxt.setText('MAX  Lv10'); this.upBtn.setAlpha(0.5); return; }
+    this.upTxt.setText(`UPGRADE [U]\nLv${t.level + 1}→${t.level + 2}  ${cost} tok`);
     this.upBtn.setAlpha(this.tokens >= cost ? 1 : 0.4);
   }
 

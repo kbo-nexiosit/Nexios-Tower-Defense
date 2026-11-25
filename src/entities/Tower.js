@@ -31,7 +31,7 @@ export function refreshBlock(scene, b) {
 export function upgradeTowerStats(t) {
   t.level++;
   Object.assign(t, towerStats(t.type, t.level));
-  t.pips.setText('★'.repeat(t.level));
+  t.pips.setText('Lv' + (t.level + 1));
 }
 
 // The boss shrugs off stuns and most of a slow, or lights would lock him in place.

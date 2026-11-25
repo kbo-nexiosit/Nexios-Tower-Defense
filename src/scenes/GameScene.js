@@ -69,6 +69,7 @@ export default class GameScene extends Phaser.Scene {
     this.input.on('wheel', () => this.rotatePiece());
     this.input.keyboard.on('keydown', () => sfx.unlock());
     this.input.keyboard.on('keydown-R', () => this.rotatePiece());
+    this.input.keyboard.on('keydown-U', () => this.upgradeSelected());
     this.input.keyboard.on('keydown-ESC', () => this.cancelPick());
     KIDS.forEach((k, i) => this.input.keyboard.on('keydown-' + ['ONE', 'TWO', 'THREE', 'FOUR'][i], () => this.chooseKid(k)));
 

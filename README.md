@@ -11,26 +11,33 @@ No install or sign-up. It runs on desktop browsers and needs a keyboard and mous
 
 ## How to play
 
-Monsters walk the road from the Rift on the left to the office door on the right. Each one that gets through costs the office health (20 to start). Survive **10 waves**, the last of which is a boss.
+Monsters walk from the Rift on the left to the office door on the right, finding their own way around whatever you build. Each one that gets through costs the office health (20 to start). Survive **10 waves**, the last of which is a boss.
 
-1. **Place kids.** Pick a kid from the HUD, then click beside the road. You can't build on the road or right on top of another kid.
-2. **Upgrade.** Click a kid you've placed to upgrade it. Each kid has two upgrade levels.
-3. **Start the wave.** Press **SPACE**. Every monster you stop pays out **arcade tokens**. You start with 150.
-4. **Clear the wave.** The **Nexios victory bell** rings and you get bonus tokens (20 + 5 × the wave number).
+1. **Drop blocks.** You get random **Tetris blocks** (current and next are shown bottom-left). Rotate with **R**, right-click or the mouse wheel, then click to drop. Monsters walk around your blocks, so you're building the maze. A drop that would fully block the path, or land on a monster, is refused.
+2. **Pick a kid.** A dropped block waits for the kid who runs it: press **1-4** or click a kid in the HUD. The kid's price pays for the block; **Esc** cancels. There's no skipping blocks.
+3. **Edge squares fire.** Only a block's squares that touch open ground shoot. Squares boxed in by other blocks, houses or trees turn to stone walls.
+4. **Upgrade.** Click a block and press **U** (or the HUD button). Kids level up from Lv1 to **Lv10**; each level adds +35% of the starting damage (the walkie slows harder, the lights stun longer). Going up from Lv L costs (0.75 + 0.25 × L) × the kid's price.
+5. **Start the wave.** Press **SPACE**. Every monster you stop pays out **arcade tokens**. You start with 160.
+6. **Clear the wave.** The **Nexios victory bell** rings and you get bonus tokens (10 + 3 × the wave number).
 
 ### Controls
 
 | Key | Action |
 |---|---|
-| Click | Place a kid, or select one to upgrade |
+| Click | Drop the current block, or select a block |
+| **R** / right-click / wheel | Rotate the block |
+| **1-4** | Pick the kid for a dropped block |
+| **Esc** | Cancel a drop |
+| **U** | Upgrade the selected block's kid |
 | **SPACE** | Start the next wave |
 | **S** | Swing the **Nexios Sword** (if you've earned it) |
 | **P** | Call the **Pizza Hut** van (50 tokens, 20 s cooldown) |
+| **M** / 🎵 | Music on/off (🔊 mutes everything) |
 
 ### Specials
 
 - **Nexios Sword.** Clear a wave without letting a single monster through and you get one charge. Press **S** to wipe everything on screen. Against the boss it takes off 15% of its health. Clearing a wave *with* the sword doesn't earn it back.
-- **Pizza Hut van.** It drives down the road spraying tomato sauce. Sauced monsters move 40% slower and take 50% more damage for 4 seconds.
+- **Pizza Hut van.** It drives the monsters' current route spraying tomato sauce. Sauced monsters move 40% slower and take 50% more damage for 4 seconds.
 - **The Upside Down.** From wave 3 on, the board can flip at random. The chance grows each wave, up to 35%. While it's flipped (25 s), monsters have 1.5× health and move 1.3× faster.
 
 ## The kids
@@ -48,8 +55,8 @@ Monsters walk the road from the Rift on the left to the office door on the right
 |---|---|
 | Crawler | The basic one. They come in every wave |
 | Brute | Slow and tanky. Costs 3 health if it gets through. Shows up from wave 3 |
-| Swarm | Fragile but fast, arrives in packs. Shows up from wave 5 |
-| Boss | Wave 10. 4,000 HP, with escorts. Letting it through ends the game |
+| Swarm | Fragile bats that fly straight over the maze. Show up from wave 5 |
+| Boss | Wave 10. 4,000 HP, with escorts. Flies straight over the maze. Letting it through ends the game |
 
 Monsters get 12% more health every wave.
 
@@ -72,7 +79,7 @@ URL flags:
 
 ## Tests
 
-The game rules (combat, economy, waves, the boss, the sword, the flip, the pizza van and the road path) live in `src/logic/` and don't depend on Phaser, so they're unit-tested with Node's built-in test runner:
+The game rules (combat, upgrades, economy, waves, the maze grid and pathfinding, Tetris blocks, the boss, the sword, the flip and the pizza van) live in `src/logic/` and don't depend on Phaser, so they're unit-tested with Node's built-in test runner:
 
 ```bash
 node --test tests/
