@@ -31,11 +31,19 @@ export function makeTextures(scene) {
   pixTexture(scene, 'pebble', [S.pebble()]);
   Object.entries(S.KID_COLOURS).forEach(([k, col]) => pixTexture(scene, 'tile-' + k, [S.crateTile(col)]));
   pixTexture(scene, 'tile-wall', [S.wallTile()]);
+  pixTexture(scene, 'rift', S.riftFrames());
+  pixTexture(scene, 'shadow', [S.shadowBlob()]);
+  pixTexture(scene, 'spark', [S.spark()]);
+  pixTexture(scene, 'smoke', [S.smoke()]);
+  pixTexture(scene, 'psybolt', [S.psyBolt()]);
+  pixTexture(scene, 'coin', [S.coin()]);
+  pixTexture(scene, 'heart', [S.heart()]);
   tiny(scene, 'dot', 4, 4, '#ffffff');
   tiny(scene, 'ash', 3, 3, '#cfc8d6');
   if (!scene.textures.exists('sauce')) pixTexture(scene, 'sauce', [new Pix(4, 4).rect(1, 0, 2, 4, '#d1201a').rect(0, 1, 4, 2, '#d1201a')], 1);
 
   const anims = scene.anims;
+  if (!anims.exists('rift-shimmer')) anims.create({ key: 'rift-shimmer', frames: [0, 1, 2].map(frame => ({ key: 'rift', frame })), frameRate: 7, repeat: -1 });
   [['crawler', 8], ['brute', 4], ['swarm', 10], ['boss', 2]].forEach(([key, rate]) => {
     if (!anims.exists(key + '-walk')) anims.create({ key: key + '-walk', frames: [{ key, frame: 0 }, { key, frame: 1 }], frameRate: rate, repeat: -1 });
   });

@@ -15,7 +15,12 @@ export function spawnEnemy(scene, type, hpScale = 1, mods = { hpMult: 1, speedMu
   if (e.flying) { e.from = s; e.to = g; e.len = Math.hypot(g.x - s.x, g.y - s.y); e.flown = 0; }
   else { e.cell = [...CONFIG.maze.spawn]; e.next = nextCell(scene.grid, scene.dist, e.cell); }
   e.sprite = scene.add.sprite(s.x, s.y, type, 0).setDepth(type === 'boss' ? 6 : 5).play(type + '-walk');
-  if (type !== 'boss') e.bar = scene.add.rectangle(s.x, s.y - 18, 24, 3, 0x6bff6b).setDepth(7);
+  const shadowScale = { boss: 4.5, brute: 1.4, swarm: 0.7, crawler: 1.5 }[type];
+  e.shadow = scene.add.image(s.x, s.y, 'shadow').setDepth(3.8).setAlpha(e.flying ? 0.28 : 0.42).setScale(shadowScale, shadowScale * 0.9);
+  if (type !== 'boss') {
+    e.barBg = scene.add.rectangle(s.x, s.y - 18, 28, 6, 0x0a0a12, 0.85).setStrokeStyle(1, 0x000000, 0.9).setDepth(7);
+    e.bar = scene.add.rectangle(s.x - 12, s.y - 18, 24, 3, 0x6bff6b).setOrigin(0, 0.5).setDepth(7.1);
+  }
   e.upside = mods.hpMult > 1;
   return e;
 }
@@ -45,12 +50,20 @@ export function stepEnemy(scene, e, dtMs, now) {
   if (e.type === 'crawler' || e.type === 'brute') { if (e.x < px - 0.01) e.sprite.setFlipX(true); else if (e.x > px + 0.01) e.sprite.setFlipX(false); }
   e.sprite.setPosition(e.x, e.y);
   if (e.type === 'swarm') e.sprite.y += Math.sin(now / 90 + e.flown) * 3;
+  // Walkers cast a shadow at their feet; flyers cast one further down, so they read as airborne.
+  e.shadow.setPosition(e.x, e.y + e.sprite.height / 2 + (e.type === 'boss' ? -6 : e.flying ? 12 : -3));
   if (e.bar) {
-    e.bar.setPosition(e.x, e.y - (e.sprite.height / 2 + 4));
-    e.bar.width = 24 * Math.max(0, e.hp / e.maxHp);
+    const by = e.y - (e.sprite.height / 2 + 5), frac = Math.max(0, e.hp / e.maxHp);
+    e.barBg.setPosition(e.x, by);
+    e.bar.setPosition(e.x - 12, by);
+    e.bar.width = 24 * frac;
+    e.bar.setFillStyle(frac > 0.6 ? 0x6bff6b : frac > 0.3 ? 0xffd84a : 0xff4a4a);
+    const hurt = frac < 1;
+    e.bar.setVisible(hurt); e.barBg.setVisible(hurt);
   }
   const sauced = now < e.saucedUntil, stunned = now < e.stunUntil, slowed = now < e.slowUntil;
-  if (sauced) e.sprite.setTint(0xff4a3a);
+  if (now < e.flashUntil) e.sprite.setTintFill(0xffffff);   // brief white flash when hit
+  else if (sauced) e.sprite.setTint(0xff4a3a);
   else if (stunned) e.sprite.setTint(0xffff88);
   else if (slowed) e.sprite.setTint(0x88ccff);
   else if (e.upside) e.sprite.setTint(0xff9090);
@@ -65,6 +78,8 @@ export function removeEnemy(e) {
   e.alive = false;
   e.sprite.destroy();
   e.bar?.destroy();
+  e.barBg?.destroy();
+  e.shadow?.destroy();
 }
 
 export const enemyReward = e => CONFIG.enemies[e.type].reward;

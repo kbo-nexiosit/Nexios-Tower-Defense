@@ -16,10 +16,15 @@ export default class UIScene extends Phaser.Scene {
   constructor() { super('UI'); }
 
   create() {
-    this.add.rectangle(0, 0, 1280, HUD_H, 0x07070d, 0.92).setOrigin(0);
-    this.add.rectangle(0, HUD_H, 1280, 2, 0xff3fa4, 0.8).setOrigin(0);
-    this.tokensText = this.add.text(14, 8, '', { ...FONT, color: '#ffb627', fontSize: '24px' });
-    this.healthText = this.add.text(14, 32, '', { ...FONT, color: '#6bff6b' });
+    this.add.rectangle(0, 0, 1280, HUD_H, 0x07070d, 0.94).setOrigin(0);
+    this.add.rectangle(0, 0, 1280, 2, 0x2a2a44, 0.9).setOrigin(0);
+    this.add.rectangle(0, HUD_H - 14, 1280, 14, 0x1a0a22, 0.6).setOrigin(0);
+    this.add.rectangle(0, HUD_H, 1280, 2, 0xff3fa4, 0.9).setOrigin(0);
+    this.add.rectangle(0, HUD_H + 2, 1280, 4, 0xff3fa4, 0.18).setOrigin(0);      // neon bleed
+    this.coin = this.add.image(22, 18, 'coin');
+    this.add.image(22, 42, 'heart');
+    this.tokensText = this.add.text(40, 5, '', { ...FONT, color: '#ffb627', fontSize: '24px' });
+    this.healthText = this.add.text(40, 31, '', { ...FONT, color: '#6bff6b' });
     this.waveText = this.add.text(150, 32, '', { ...FONT, color: '#ff8fc8' });
 
     this.towerButtons = TOWER_INFO.map((info, i) => this.makeTowerButton(info, 300 + i * 100));
@@ -84,8 +89,11 @@ export default class UIScene extends Phaser.Scene {
     this.input.on('pointerdown', () => sfx.unlock());
     const ev = this.game.events;
     const on = (name, fn) => { ev.on(name, fn, this); this.events.once('shutdown', () => ev.off(name, fn, this)); };
-    on('tokens', n => { this.tokens = n; this.tokensText.setText(`Tokens: ${n}`); this.refreshButtons(); this.refreshUpgrade(); });
-    on('health', n => this.healthText.setText(`Office: ${n}/${CONFIG.baseHealth}`));
+    on('tokens', n => {
+      if (n > this.tokens) this.tweens.add({ targets: this.coin, scale: 1.35, duration: 90, yoyo: true });   // coin bounces on income
+      this.tokens = n; this.tokensText.setText(`${n} tokens`); this.refreshButtons(); this.refreshUpgrade();
+    });
+    on('health', n => this.healthText.setText(`${n}/${CONFIG.baseHealth}`).setColor(n > CONFIG.baseHealth * 0.5 ? '#6bff6b' : n > CONFIG.baseHealth * 0.25 ? '#ffd84a' : '#ff4a4a'));
     on('wave', w => this.waveText.setText(`Wave ${w}/${CONFIG.waves.count}`));
     on('bossHp', (hp, max) => {
       const show = hp > 0;
