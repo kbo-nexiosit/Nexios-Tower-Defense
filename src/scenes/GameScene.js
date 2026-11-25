@@ -281,8 +281,9 @@ export default class GameScene extends Phaser.Scene {
   drawStreetlights() {
     const spots = [[120, 110], [300, 340], [210, 600], [490, 610], [590, 400], [690, 180], [870, 320], [770, 600], [960, 580], [1040, 440]];
     spots.forEach(([x, y], i) => {
-      const glow = this.add.circle(x, y, 46, 0xffc46b, 0.10).setDepth(1.6).setBlendMode(Phaser.BlendModes.ADD);
-      this.add.circle(x, y, 20, 0xffd88a, 0.10).setDepth(1.6).setBlendMode(Phaser.BlendModes.ADD);
+      // Soft radial falloff from stacked rings.
+      const glow = this.add.container(x, y).setDepth(1.6);
+      for (let r = 56, a = 0.025; r > 6; r -= 8, a += 0.012) glow.add(this.add.circle(0, 0, r, 0xffa84a, a).setBlendMode(Phaser.BlendModes.ADD));
       this.add.rectangle(x, y, 4, 4, 0xfff2c4).setDepth(1.7);
       if (i % 3 === 1) this.tweens.add({ targets: glow, alpha: 0.02, duration: 60, yoyo: true, repeat: -1, repeatDelay: Phaser.Math.Between(1500, 4000) });
     });
