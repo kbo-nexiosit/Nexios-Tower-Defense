@@ -100,3 +100,4 @@ export function ambient(on, intensity = 0.04) {
   }
   if (drone) drone.g.gain.setTargetAtTime(on ? intensity : 0.0001, ctx.currentTime, 0.5);
 }
+export const audioState = () => (ctx ? ctx.state : 'none');   // for testing
