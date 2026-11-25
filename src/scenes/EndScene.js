@@ -52,14 +52,14 @@ export default class EndScene extends Phaser.Scene {
     this.add.text(cx, 380, '← → choose letter slot   •   ↑ ↓ or type a letter   •   ENTER to save', { fontFamily: VT, fontSize: '24px', color: '#9aa0b8' }).setOrigin(0.5);
     const render = () => slots.forEach((t, i) => { t.setText(LETTERS[letters[i]]); t.setColor(i === slot ? '#ffd84a' : '#ffffff'); caret.x = cx - 90 + slot * 90; });
     render();
-    let done = false;
+    let done = false, ok = null;
     const save = () => {
       if (done) return; done = true;
       const initials = letters.map(i => LETTERS[i]).join('');
       const r = insertScore(this.board, { initials, ...this.score });
       this.board = r.board;
       if (storage) saveBoard(storage, this.board);
-      [title, caret, ...slots].forEach(o => o.destroy());
+      [title, caret, ok, ...slots].forEach(o => o?.destroy());
       this.children.list.filter(o => o.text && o.text.startsWith('← →')).forEach(o => o.destroy());
       this.input.keyboard.removeAllListeners();
       this.showBoard(r.rank);
@@ -76,8 +76,8 @@ export default class EndScene extends Phaser.Scene {
       else if (/^[a-z]$/i.test(k)) { letters[slot] = LETTERS.indexOf(k.toUpperCase()); slot = Math.min(2, slot + 1); }
       render();
     });
-    const ok = this.add.text(cx, 440, '[ SAVE ]', { fontFamily: VT, fontSize: '34px', color: '#ff3fa4' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    ok.on('pointerdown', () => { ok.destroy(); save(); });
+    ok = this.add.text(cx, 440, '[ SAVE ]', { fontFamily: VT, fontSize: '34px', color: '#ff3fa4' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    ok.on('pointerdown', () => save());
   }
 
   showBoard(highlight) {
