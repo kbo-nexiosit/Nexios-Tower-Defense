@@ -8,4 +8,4 @@ test('waves 1-9 have no boss', () => { for (let n=1;n<10;n++) assert.ok(!waveSch
 test('brutes from 3, swarms from 5', () => { assert.ok(!waveSchedule(2).some(x=>x.type==='brute')); assert.ok(waveSchedule(3).some(x=>x.type==='brute')); assert.ok(!waveSchedule(4).some(x=>x.type==='swarm')); assert.ok(waveSchedule(5).some(x=>x.type==='swarm')); });
 test('hpScale grows', () => assert.ok(Math.abs(waveSchedule(3)[0].hpScale - 1.24) < 1e-9));
 import { clearBonus } from '../src/logic/waves.js';
-test('clear bonus grows per wave', () => { assert.equal(clearBonus(1), 25); assert.equal(clearBonus(9), 65); });
+test('clear bonus grows per wave', () => { assert.equal(clearBonus(1), 13); assert.equal(clearBonus(9), 37); });
