@@ -6,6 +6,7 @@ import { makeTextures, PALETTE } from '../art/textures.js';
 import { spawnEnemy, stepEnemy, removeEnemy, enemyReward, enemyLeak } from '../entities/Enemy.js';
 import { placeTower, stepTower, upgradeTowerStats } from '../entities/Tower.js';
 import { upgradeCost } from '../logic/combat.js';
+import { crossedThresholds } from '../logic/boss.js';
 import { waveSchedule } from '../logic/waves.js';
 import * as sfx from '../audio/sfx.js';
 
@@ -30,6 +31,8 @@ export default class GameScene extends Phaser.Scene {
     this.towers = [];
     this.over = false;
     this.now = 0;
+    this.bossDefeated = false;
+    this.boss = null;
     this.sfx = sfx;
     this.wave = 0;
     this.waveActive = false;
@@ -46,6 +49,10 @@ export default class GameScene extends Phaser.Scene {
 
     this.scene.launch('UI');
     this.input.keyboard.on('keydown-SPACE', () => this.startWave());
+    if (new URLSearchParams(location.search).has('debug')) {
+      // Debug: B jumps straight to the boss wave.
+      this.input.keyboard.on('keydown-B', () => { if (!this.waveActive) { this.wave = CONFIG.waves.count - 1; this.wallet.earn(2000); this.emitAll(); this.startWave(); } });
+    }
     this.emitAll();
     sfx.ambient(true);
   }
@@ -63,8 +70,9 @@ export default class GameScene extends Phaser.Scene {
     for (const s of schedule) {
       // Scene time pauses while the tab is hidden, so no burst on return.
       this.time.delayedCall(s.atMs, () => {
-        if (this.over) return;
+        if (this.over || this.bossDefeated) { this.pendingSpawns--; return; }
         const e = spawnEnemy(this, s.type, s.hpScale, this.spawnMods());
+        if (e.type === 'boss') this.bossEntrance(e);
         this.enemies.push(e);
         this.pendingSpawns--;
         this.events.emit('spawned', e);
@@ -85,8 +93,35 @@ export default class GameScene extends Phaser.Scene {
     this.game.events.emit('waveState', false);
   }
 
-  banner(text, color = '#ffffff', sub = '') {
-    const bell = this.add.image(640, 250, 'bell').setDepth(30).setScale(2).setAngle(-25);
+  bossEntrance(e) {
+    this.boss = e;
+    sfx.boss();
+    this.cameras.main.shake(900, 0.012);
+    this.cameras.main.flash(400, 120, 0, 0);
+    this.tweens.add({ targets: e.sprite, scaleX: 1.08, scaleY: 0.94, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.game.events.emit('bossHp', e.hp, e.maxHp);
+  }
+
+  bossPhase() {
+    this.events.emit('bossPhase');
+    sfx.boss();
+    this.cameras.main.shake(500, 0.01);
+    this.cameras.main.flash(300, 160, 0, 30);
+  }
+
+  bossDefeat(e) {
+    this.bossDefeated = true;
+    this.boss = null;
+    this.game.events.emit('bossHp', 0, e.maxHp);
+    this.cameras.main.shake(1200, 0.02);
+    this.cameras.main.flash(800, 255, 255, 255);
+    for (let i = 0; i < 6; i++) this.time.delayedCall(i * 120, () => this.puff(e.x + Phaser.Math.Between(-30, 30), e.y + Phaser.Math.Between(-40, 40), 0xff3030));
+    // The rest of the horde flees back through the Rift.
+    for (const o of this.enemies) if (o.alive && o !== e) { this.puff(o.x, o.y, 0x8a3a3a); removeEnemy(o); }
+  }
+
+  banner(text, color = '#ffffff', sub = '', withBell = true) {
+    const bell = this.add.image(640, 250, 'bell').setDepth(30).setScale(2).setAngle(-25).setVisible(withBell);
     const t = this.add.text(640, 340, text, { fontFamily: 'monospace', fontSize: '48px', color, fontStyle: 'bold', stroke: '#000', strokeThickness: 6 })
       .setOrigin(0.5).setDepth(30);
     const st = this.add.text(640, 392, sub, { fontFamily: 'monospace', fontSize: '20px', color: '#ffffff', stroke: '#000', strokeThickness: 4 })
@@ -191,7 +226,13 @@ export default class GameScene extends Phaser.Scene {
   }
 
   hit(target, damage) {
+    const prevHp = target.hp;
     const { killed } = applyDamage(target, damage, this.now);
+    if (target.type === 'boss') {
+      crossedThresholds(prevHp, target.hp, target.maxHp).forEach(() => this.bossPhase());
+      this.game.events.emit('bossHp', Math.max(0, target.hp), target.maxHp);
+      if (killed) { this.bossDefeat(target); removeEnemy(target); return; }
+    }
     if (!killed) return;
     this.wallet.earn(enemyReward(target));
     this.game.events.emit('tokens', this.wallet.tokens);

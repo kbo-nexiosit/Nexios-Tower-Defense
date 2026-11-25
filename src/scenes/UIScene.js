@@ -36,6 +36,10 @@ export default class UIScene extends Phaser.Scene {
     this.upTxt = this.add.text(810, 28, '', { ...FONT, fontSize: '13px', color: '#ffc94a', align: 'center' }).setOrigin(0.5).setVisible(false);
     this.upBtn.on('pointerdown', () => this.scene.get('Game').upgradeSelected());
 
+    // Boss health bar (no name, no title).
+    this.bossBarBg = this.add.rectangle(640, 76, 604, 16, 0x000000, 0.8).setStrokeStyle(2, 0xff2a3a).setVisible(false);
+    this.bossBar = this.add.rectangle(340, 76, 600, 12, 0xff2a3a).setOrigin(0, 0.5).setVisible(false);
+
     // Mute toggle.
     const mute = this.add.text(1246, 28, sfx.isMuted() ? '🔇' : '🔊', { fontSize: '22px' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     mute.on('pointerdown', () => { sfx.setMuted(!sfx.isMuted()); mute.setText(sfx.isMuted() ? '🔇' : '🔊'); });
@@ -45,6 +49,11 @@ export default class UIScene extends Phaser.Scene {
     on('tokens', n => { this.tokens = n; this.tokensText.setText(`Tokens: ${n}`); this.refreshButtons(); this.refreshUpgrade(); });
     on('health', n => this.healthText.setText(`Office: ${n}/${CONFIG.baseHealth}`));
     on('wave', w => this.waveText.setText(`Wave ${w}/${CONFIG.waves.count}`));
+    on('bossHp', (hp, max) => {
+      const show = hp > 0;
+      this.bossBarBg.setVisible(show); this.bossBar.setVisible(show);
+      this.bossBar.width = 600 * Math.max(0, hp / max);
+    });
     on('towerSelected', t => { this.selectedTower = t; this.refreshUpgrade(); });
     on('waveState', active => {
       this.startBtn.setVisible(!active); this.startTxt.setVisible(!active);
