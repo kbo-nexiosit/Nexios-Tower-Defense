@@ -12,7 +12,7 @@ import { createSword } from '../logic/sword.js';
 import { rollFlip, flipModifiers } from '../logic/flip.js';
 import { waveSchedule, clearBonus } from '../logic/waves.js';
 import { bossFor, bossHp, levelWaves } from '../logic/run.js';
-import { createGrid, setObstacles, placeBlock as placeOnGrid, distanceField, canPlace, routeFrom } from '../logic/grid.js';
+import { createGrid, setObstacles, placeBlock as placeOnGrid, distanceField, canPlace, routeFrom, routeWith } from '../logic/grid.js';
 import { SHAPES, createBag, cellsAt, rotate } from '../logic/tetromino.js';
 import * as sfx from '../audio/sfx.js';
 
@@ -66,6 +66,9 @@ export default class GameScene extends Phaser.Scene {
 
     this.drawMap();
     this.routeGfx = this.add.graphics().setDepth(0.6);
+    // Where the route would go if the hovering block were dropped.
+    this.previewGfx = this.add.graphics().setDepth(0.7);
+    this.previewTxt = this.add.text(0, 0, '', { fontFamily: '"VT323", monospace', fontSize: '20px', color: '#8ff0ff', stroke: '#000', strokeThickness: 4 }).setOrigin(0.5, 1).setDepth(20.1).setVisible(false);
     this.ghost = [0, 1, 2, 3].map(() => this.add.rectangle(0, 0, M.cell - 2, M.cell - 2, 0xffffff, 0.35).setStrokeStyle(2, 0xffffff, 0.8).setDepth(20).setVisible(false));
     this.rangeGfx = this.add.graphics().setDepth(3.95);
     this.drawRoute();
@@ -134,6 +137,7 @@ export default class GameScene extends Phaser.Scene {
       this.coldLayer.setAlpha(1); this.redLayer.setAlpha(0.18); this.vines.setAlpha(1);
       this.ash.start();
       this.fireflies.stop(); this.fireflies.setVisible(false);
+      this.previewTxt.setVisible(false);   // it would read mirrored on the backside
     });
     this.lightning = this.time.addEvent({ delay: 2600, loop: true, callback: () => {
       if (!this.upside || Math.random() < 0.4) return;
@@ -441,6 +445,33 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
+  clearRoutePreview() { this.previewGfx.clear(); this.previewTxt.setVisible(false); this.routeGfx.setAlpha(1); }
+
+  // Dashed preview of the detour the monsters would take if `cells` became a block.
+  // Nothing is shown when the block wouldn't change their route.
+  drawRoutePreview(cells) {
+    this.clearRoutePreview();
+    const now = routeFrom(this.grid, this.dist, M.spawn);
+    const next = routeWith(this.grid, cells, M.spawn, M.goal);
+    if (!next || (next.length === now.length && next.every((c, i) => c[0] === now[i][0] && c[1] === now[i][1]))) return;
+    const pts = next.map(c => this.cellCenter(c)), g = this.previewGfx;
+    this.routeGfx.setAlpha(0.45);                                 // the old trail fades back
+    for (const [w, col, a] of [[9, 0x06141a, 0.55], [4, 0x8ff0ff, 0.95]]) {
+      g.lineStyle(w, col, a);
+      for (let i = 1; i < pts.length; i++) {
+        const a0 = pts[i - 1], b0 = pts[i];
+        g.lineBetween(a0.x + (b0.x - a0.x) * 0.2, a0.y + (b0.y - a0.y) * 0.2, a0.x + (b0.x - a0.x) * 0.8, a0.y + (b0.y - a0.y) * 0.8);
+      }
+    }
+    // How much longer (or shorter) the walk gets, shown above the block.
+    const extra = next.length - now.length;
+    if (extra !== 0 && !this.upside) {
+      const top = cells.map(c => this.cellCenter(c)).reduce((m, p) => (p.y < m.y ? p : m));
+      const cx = cells.reduce((s, c) => s + this.cellCenter(c).x, 0) / cells.length;
+      this.previewTxt.setText((extra > 0 ? '+' : '') + extra + ' steps').setColor(extra > 0 ? '#8ff0ff' : '#ff8a8a').setPosition(cx, top.y - M.cell / 2 - 2).setVisible(true);
+    }
+  }
+
   // Pointer in world space (the camera is mirrored in the Upside Down).
   worldPoint(p) { return { x: p.worldX, y: p.worldY }; }
   // While the board is nearly edge-on, clicks can't be mapped sensibly.
@@ -471,12 +502,13 @@ export default class GameScene extends Phaser.Scene {
 
   updateGhost(p) {
     if (this.picking) return;
-    if (p.y < HUD_H || this.over) { this.ghost.forEach(g => g.setVisible(false)); return; }
+    if (p.y < HUD_H || this.over) { this.ghost.forEach(g => g.setVisible(false)); this.clearRoutePreview(); return; }
     const cells = this.pieceCells(p);
     const onBlock = cells.length && this.blockAt(this.cellAt(this.worldPoint(p)));
     const res = this.placementCheck(cells);
     this.showGhost(cells, res.ok ? 0x6bff6b : 0xff3030);
     this.ghost.forEach(g => g.setAlpha(onBlock ? 0.25 : 1));
+    if (res.ok || res.reason === 'tokens') this.drawRoutePreview(cells); else this.clearRoutePreview();
     this.lastPointer = p;
   }
 
@@ -512,6 +544,7 @@ export default class GameScene extends Phaser.Scene {
     if (!this.picking) return;
     this.picking = null;
     this.ghost.forEach(g => g.setVisible(false));
+    this.clearRoutePreview();
     this.game.events.emit('picking', false);
     if (this.lastPointer) this.updateGhost(this.lastPointer);
   }
@@ -546,6 +579,7 @@ export default class GameScene extends Phaser.Scene {
   recomputeMaze() {
     this.dist = distanceField(this.grid, M.goal);
     this.towers.forEach(b => refreshBlock(this, b));
+    this.clearRoutePreview();
     this.drawRoute();
   }
 
