@@ -5,6 +5,8 @@ export function placeTower(scene, type, x, y) {
   t.sprite = scene.add.image(x, y, type).setDepth(4).setInteractive({ useHandCursor: true });
   t.pips = scene.add.text(x, y + 18, '', { fontFamily: 'monospace', fontSize: '10px', color: '#ffc94a' }).setOrigin(0.5).setDepth(4);
   t.sprite.on('pointerdown', (p, lx, ly, ev) => { ev.stopPropagation(); scene.selectTower(t); });
+  t.sprite.on('pointerover', () => { if (!scene.selected) scene.rangeRing.setPosition(t.x, t.y).setRadius(t.range).setVisible(true); scene.ghost.setAlpha(0); });
+  t.sprite.on('pointerout', () => { if (!scene.selected) scene.rangeRing.setVisible(false); scene.ghost.setAlpha(1); });
   return t;
 }
 

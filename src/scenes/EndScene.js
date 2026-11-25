@@ -3,12 +3,12 @@ import * as sfx from '../audio/sfx.js';
 export default class EndScene extends Phaser.Scene {
   constructor() { super('End'); }
 
-  create({ won }) {
+  create({ won, wave = 0 }) {
     const cx = 640;
     this.add.rectangle(0, 0, 1280, 720, won ? 0x0b1020 : 0x1a0005).setOrigin(0);
     this.add.text(cx, 220, won ? 'OFFICE SAVED' : 'THE GATE IS OPEN',
       { fontFamily: 'monospace', fontSize: '64px', color: won ? '#6bff6b' : '#ff2a3a', fontStyle: 'bold' }).setOrigin(0.5);
-    this.add.text(cx, 300, won ? 'The kids held the line. The Upside Down retreats.' : 'The monsters overran the NexiosIT office.',
+    this.add.text(cx, 300, won ? 'The kids held the line. The Upside Down retreats.' : `The monsters overran the NexiosIT office on wave ${wave}.`,
       { fontFamily: 'monospace', fontSize: '20px', color: '#e8e8f0' }).setOrigin(0.5);
     this.extra(won, cx);
     const btn = this.add.text(cx, 520, '[ PLAY AGAIN ]', { fontFamily: 'monospace', fontSize: '28px', color: '#ff3fa4' })

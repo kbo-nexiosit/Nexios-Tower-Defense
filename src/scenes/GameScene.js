@@ -136,6 +136,9 @@ export default class GameScene extends Phaser.Scene {
       });
     }
     this.game.events.emit('wave', this.wave);
+    if (this.wave === 1) this.tip('Click beside the road to place kids. Click a kid to upgrade it.');
+    if (this.wave === 3) this.tip('Tip: upgraded kids hit much harder. Save the Nexios Sword for something big.');
+    if (this.wave === CONFIG.waves.count) this.tip('Something big is coming through the Rift…');
     this.game.events.emit('waveState', true);
   }
 
@@ -270,7 +273,25 @@ export default class GameScene extends Phaser.Scene {
     const rift = this.add.ellipse(14, 150, 34, 90, PALETTE.rift).setDepth(2);
     this.add.ellipse(14, 150, 14, 70, 0x2a0008).setDepth(2);
     this.tweens.add({ targets: rift, scaleX: 1.25, alpha: 0.7, yoyo: true, repeat: -1, duration: 700 });
+    this.drawStreetlights();
     this.drawBuildings();
+  }
+
+  // Warm streetlight pools along the road; a few flicker.
+  drawStreetlights() {
+    const spots = [[120, 110], [300, 340], [210, 600], [490, 610], [590, 400], [690, 180], [870, 320], [770, 600], [960, 580], [1040, 440]];
+    spots.forEach(([x, y], i) => {
+      const glow = this.add.circle(x, y, 46, 0xffc46b, 0.10).setDepth(1.6).setBlendMode(Phaser.BlendModes.ADD);
+      this.add.circle(x, y, 20, 0xffd88a, 0.10).setDepth(1.6).setBlendMode(Phaser.BlendModes.ADD);
+      this.add.rectangle(x, y, 4, 4, 0xfff2c4).setDepth(1.7);
+      if (i % 3 === 1) this.tweens.add({ targets: glow, alpha: 0.02, duration: 60, yoyo: true, repeat: -1, repeatDelay: Phaser.Math.Between(1500, 4000) });
+    });
+  }
+
+  tip(text) {
+    const t = this.add.text(640, 660, text, { fontFamily: 'monospace', fontSize: '18px', color: '#ffc94a', stroke: '#000', strokeThickness: 5 })
+      .setOrigin(0.5).setDepth(30);
+    this.tweens.add({ targets: t, alpha: 0, delay: 4000, duration: 800, onComplete: () => t.destroy() });
   }
 
   drawBuildings() {
@@ -386,7 +407,7 @@ export default class GameScene extends Phaser.Scene {
     if (this.over) return;
     this.over = true;
     sfx.ambient(false);
-    this.time.delayedCall(600, () => { this.scene.stop('UI'); this.scene.start('End', { won }); });
+    this.time.delayedCall(600, () => { this.scene.stop('UI'); this.scene.start('End', { won, wave: this.wave }); });
   }
 
   update(time, delta) {

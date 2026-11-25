@@ -29,7 +29,7 @@ export default class TitleScene extends Phaser.Scene {
     this.add.text(cx, 345, 'The kids must defend the NexiosIT office until dawn.',
       { fontFamily: 'monospace', fontSize: '20px', color: '#e8e8f0' }).setOrigin(0.5);
     this.add.text(cx, 430,
-      'Place kids beside the road  •  Earn arcade tokens  •  Ring the bell\nClear a wave with no leaks to win the Nexios Sword  •  Beware the Upside Down',
+      'Place kids beside the road  •  Earn arcade tokens  •  Ring the bell\nClear a wave with no leaks to win the Nexios Sword  •  Beware the Upside Down\n\nSPACE start wave   •   S Nexios Sword   •   P Pizza Hut',
       { fontFamily: 'monospace', fontSize: '15px', color: '#9aa0b8', align: 'center', lineSpacing: 8 }).setOrigin(0.5);
     const start = this.add.text(cx, 560, 'CLICK TO START', { fontFamily: 'monospace', fontSize: '32px', color: '#ff3fa4' }).setOrigin(0.5);
     this.tweens.add({ targets: start, alpha: 0.3, duration: 700, yoyo: true, repeat: -1 });
