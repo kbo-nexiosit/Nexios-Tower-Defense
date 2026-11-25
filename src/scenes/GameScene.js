@@ -136,6 +136,7 @@ export default class GameScene extends Phaser.Scene {
       this.coldLayer.setAlpha(1); this.redLayer.setAlpha(0.18); this.vines.setAlpha(1);
       this.ash.start();
       this.fireflies.stop(); this.fireflies.setVisible(false);
+      this.previewTxt.setVisible(false);   // it would read mirrored on the backside
     });
     this.lightning = this.time.addEvent({ delay: 2600, loop: true, callback: () => {
       if (!this.upside || Math.random() < 0.4) return;
