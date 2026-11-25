@@ -73,6 +73,8 @@ export function flip() {
   noise({ dur: 1.4, vol: 0.2, filter: 'bandpass', from: 3000, to: 100, q: 4 });
 }
 
+export function thunder() { if (ready()) noise({ dur: 0.9, vol: 0.35, from: 900, to: 60 }); }
+
 export function sword() {
   if (!ready()) return;
   noise({ dur: 0.6, vol: 0.45, filter: 'bandpass', from: 600, to: 6000, q: 2 });

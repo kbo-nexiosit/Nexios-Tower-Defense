@@ -69,6 +69,9 @@ export default class GameScene extends Phaser.Scene {
     sfx.ambient(true);
 
     // Upside Down: overlays sit above the town but below kids and monsters, so those stay readable.
+    // The camera mirrors the board on a vertical squash (negative zoomY); culling must be off for that.
+    this.cameras.main.disableCull = true;
+    this.vines = this.drawVines();
     this.coldLayer = this.add.rectangle(640, 360, 1280, 720, 0x5a6fa8).setDepth(3.5).setBlendMode(Phaser.BlendModes.MULTIPLY).setAlpha(0);
     this.redLayer = this.add.rectangle(640, 360, 1280, 720, 0xff2a3a).setDepth(3.6).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0);
     this.ash = this.add.particles(0, 0, 'ash', {
@@ -99,19 +102,53 @@ export default class GameScene extends Phaser.Scene {
     sfx.flip();
     sfx.ambient(true, 0.12);
     this.cameras.main.shake(400, 0.008);
-    this.tweens.add({ targets: this.cameras.main, rotation: Math.PI, duration: 900, ease: 'Cubic.easeInOut' });
-    this.tweens.add({ targets: this.coldLayer, alpha: 1, duration: 900 });
-    this.tweens.add({ targets: this.redLayer, alpha: 0.18, duration: 900 });
-    this.ash.start();
+    this.cardFlip(-1, () => {
+      // Edge-on: the backside comes into view.
+      this.coldLayer.setAlpha(1); this.redLayer.setAlpha(0.18); this.vines.setAlpha(1);
+      this.ash.start();
+    });
+    this.lightning = this.time.addEvent({ delay: 2600, loop: true, callback: () => {
+      if (!this.upside || Math.random() < 0.4) return;
+      this.cameras.main.flash(140, 255, 40, 50);
+      sfx.thunder();
+    } });
     this.game.events.emit('upside', true);
+  }
+
+  // Flip the board over its horizontal axis like a card (bottom to top), swapping sides edge-on.
+  cardFlip(to, atEdge) {
+    const cam = this.cameras.main;
+    this.tweens.killTweensOf(cam);
+    this.tweens.add({ targets: cam, zoomY: 0, duration: 450, ease: 'Sine.easeIn', onComplete: () => {
+      atEdge();
+      this.tweens.add({ targets: cam, zoomY: to, duration: 450, ease: 'Sine.easeOut' });
+    } });
+  }
+
+  // Dark Upside Down vines creeping over the town; only seen on the backside.
+  drawVines() {
+    const g = this.add.graphics().setDepth(3.55).setAlpha(0);
+    const rnd = new Phaser.Math.RandomDataGenerator(['vines']);
+    for (let i = 0; i < 26; i++) {
+      let x = rnd.between(0, 1280), y = rnd.between(60, 720), a = rnd.frac() * Math.PI * 2;
+      for (let s = 0; s < 14; s++) {
+        const nx = x + Math.cos(a) * 22, ny = y + Math.sin(a) * 22;
+        g.lineStyle(Math.max(1, 6 - s * 0.4), 0x2a0a10, 0.9).lineBetween(x, y, nx, ny);
+        if (s % 4 === 2) { g.lineStyle(2, 0x3d0f18, 0.8).lineBetween(nx, ny, nx + Math.cos(a + 1.2) * 14, ny + Math.sin(a + 1.2) * 14); }
+        x = nx; y = ny; a += rnd.realInRange(-0.6, 0.6);
+      }
+    }
+    return g;
   }
 
   exitUpside() {
     this.upside = false;
     sfx.ambient(true, 0.04);
-    this.tweens.add({ targets: this.cameras.main, rotation: 0, duration: 900, ease: 'Cubic.easeInOut' });
-    this.tweens.add({ targets: [this.coldLayer, this.redLayer], alpha: 0, duration: 900 });
-    this.ash.stop();
+    this.lightning?.remove();
+    this.cardFlip(1, () => {
+      this.coldLayer.setAlpha(0); this.redLayer.setAlpha(0); this.vines.setAlpha(0);
+      this.ash.stop();
+    });
     this.game.events.emit('upside', false);
   }
 
@@ -305,6 +342,8 @@ export default class GameScene extends Phaser.Scene {
 
   // Pointer in world space (the camera is rotated in the Upside Down).
   worldPoint(p) { return { x: p.worldX, y: p.worldY }; }
+  // While the board is nearly edge-on, clicks can't be mapped sensibly.
+  midFlip() { return Math.abs(this.cameras.main.zoomY) < 0.5; }
 
   updateGhost(p) {
     const type = this.registry.get('selected');
@@ -316,7 +355,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   tryPlace(p) {
-    if (this.over || p.y < HUD_H) return;
+    if (this.over || p.y < HUD_H || this.midFlip()) return;
     this.selectTower(null);
     const type = this.registry.get('selected');
     const w = this.worldPoint(p);
