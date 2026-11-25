@@ -1,10 +1,14 @@
 import CONFIG from '../config.js';
 import { HUD_H } from './GameScene.js';
 import * as sfx from '../audio/sfx.js';
+import { upgradeCost } from '../logic/combat.js';
 
 const FONT = { fontFamily: 'monospace', fontSize: '16px', color: '#e8e8f0' };
 export const TOWER_INFO = [
   { type: 'slingshot', label: 'Slingshot' },
+  { type: 'walkie', label: 'Walkie' },
+  { type: 'psychic', label: 'Psychic' },
+  { type: 'lights', label: 'X-mas Lights' },
 ];
 
 export default class UIScene extends Phaser.Scene {
@@ -13,11 +17,11 @@ export default class UIScene extends Phaser.Scene {
   create() {
     this.add.rectangle(0, 0, 1280, HUD_H, 0x07070d, 0.92).setOrigin(0);
     this.add.rectangle(0, HUD_H, 1280, 2, 0xff3fa4, 0.8).setOrigin(0);
-    this.tokensText = this.add.text(14, 10, '', { ...FONT, color: '#ffb627', fontSize: '18px' });
+    this.tokensText = this.add.text(14, 8, '', { ...FONT, color: '#ffb627', fontSize: '18px' });
     this.healthText = this.add.text(14, 32, '', { ...FONT, color: '#6bff6b' });
-    this.waveText = this.add.text(170, 10, '', FONT);
+    this.waveText = this.add.text(150, 32, '', { ...FONT, color: '#ff8fc8' });
 
-    this.towerButtons = TOWER_INFO.map((info, i) => this.makeTowerButton(info, 330 + i * 110));
+    this.towerButtons = TOWER_INFO.map((info, i) => this.makeTowerButton(info, 300 + i * 108));
     this.refreshButtons();
     this.waveText.setText(`Wave 0/${CONFIG.waves.count}`);
 
@@ -27,15 +31,21 @@ export default class UIScene extends Phaser.Scene {
     this.startBtn.on('pointerdown', () => this.scene.get('Game').startWave());
     this.tweens.add({ targets: this.startTxt, alpha: 0.5, duration: 500, yoyo: true, repeat: -1 });
 
+    // Upgrade panel for the selected kid.
+    this.upBtn = this.add.rectangle(810, 28, 130, 44, 0x2a2310).setStrokeStyle(2, 0xffc94a).setInteractive({ useHandCursor: true }).setVisible(false);
+    this.upTxt = this.add.text(810, 28, '', { ...FONT, fontSize: '13px', color: '#ffc94a', align: 'center' }).setOrigin(0.5).setVisible(false);
+    this.upBtn.on('pointerdown', () => this.scene.get('Game').upgradeSelected());
+
     // Mute toggle.
     const mute = this.add.text(1246, 28, sfx.isMuted() ? '🔇' : '🔊', { fontSize: '22px' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     mute.on('pointerdown', () => { sfx.setMuted(!sfx.isMuted()); mute.setText(sfx.isMuted() ? '🔇' : '🔊'); });
 
     const ev = this.game.events;
     const on = (name, fn) => { ev.on(name, fn, this); this.events.once('shutdown', () => ev.off(name, fn, this)); };
-    on('tokens', n => { this.tokens = n; this.tokensText.setText(`Tokens: ${n}`); this.refreshButtons(); });
+    on('tokens', n => { this.tokens = n; this.tokensText.setText(`Tokens: ${n}`); this.refreshButtons(); this.refreshUpgrade(); });
     on('health', n => this.healthText.setText(`Office: ${n}/${CONFIG.baseHealth}`));
     on('wave', w => this.waveText.setText(`Wave ${w}/${CONFIG.waves.count}`));
+    on('towerSelected', t => { this.selectedTower = t; this.refreshUpgrade(); });
     on('waveState', active => {
       this.startBtn.setVisible(!active); this.startTxt.setVisible(!active);
     });
@@ -50,6 +60,17 @@ export default class UIScene extends Phaser.Scene {
     const label = this.add.text(x - 12, 12, `${info.label}\n${cost} tok`, { ...FONT, fontSize: '12px' });
     bg.on('pointerdown', () => { this.registry.set('selected', info.type); this.refreshButtons(); });
     return { ...info, cost, bg, icon, label };
+  }
+
+  refreshUpgrade() {
+    const t = this.selectedTower;
+    const show = !!t;
+    this.upBtn?.setVisible(show); this.upTxt?.setVisible(show);
+    if (!show) return;
+    const cost = upgradeCost(t.type, t.level);
+    if (cost === null) { this.upTxt.setText('MAX LEVEL'); this.upBtn.setAlpha(0.5); return; }
+    this.upTxt.setText(`UPGRADE ▲${t.level + 1}\n${cost} tok`);
+    this.upBtn.setAlpha(this.tokens >= cost ? 1 : 0.4);
   }
 
   refreshButtons() {

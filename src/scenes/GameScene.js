@@ -4,7 +4,8 @@ import { createWallet } from '../logic/economy.js';
 import { applyDamage, canPlace } from '../logic/combat.js';
 import { makeTextures, PALETTE } from '../art/textures.js';
 import { spawnEnemy, stepEnemy, removeEnemy, enemyReward, enemyLeak } from '../entities/Enemy.js';
-import { placeTower, stepTower } from '../entities/Tower.js';
+import { placeTower, stepTower, upgradeTowerStats } from '../entities/Tower.js';
+import { upgradeCost } from '../logic/combat.js';
 import { waveSchedule } from '../logic/waves.js';
 import * as sfx from '../audio/sfx.js';
 
@@ -175,6 +176,17 @@ export default class GameScene extends Phaser.Scene {
     if (!t) { this.rangeRing.setVisible(false); this.game.events.emit('towerSelected', null); return; }
     this.rangeRing.setPosition(t.x, t.y).setRadius(t.range).setVisible(true);
     this.game.events.emit('towerSelected', t);
+  }
+
+  upgradeSelected() {
+    const t = this.selected;
+    if (!t || this.over) return;
+    const cost = upgradeCost(t.type, t.level);
+    if (cost === null || !this.wallet.spend(cost)) return;
+    upgradeTowerStats(t);
+    this.game.events.emit('tokens', this.wallet.tokens);
+    this.selectTower(t);
+    this.puff(t.x, t.y, 0xffc94a);
   }
 
   hit(target, damage) {

@@ -46,3 +46,26 @@ export function canPlace(slot, towers, road, minRoadDist = 32, minTowerDist = 40
   }
   return !towers.some(t => Math.hypot(t.x - slot.x, t.y - slot.y) < minTowerDist);
 }
+
+export function towerStats(type, level) {
+  const { levels, ...base } = CONFIG.towers[type];
+  const stats = { ...base };
+  for (let i = 0; i < level; i++) Object.assign(stats, levels[i]);
+  stats.cost = base.cost;
+  return stats;
+}
+
+export function upgradeCost(type, level) {
+  const next = CONFIG.towers[type].levels[level];
+  return next ? next.cost : null;
+}
+
+export function applySlow(e, factor, ms, now) {
+  const active = now < e.slowUntil;
+  e.slowFactor = active ? Math.min(e.slowFactor, factor) : factor;
+  e.slowUntil = Math.max(e.slowUntil, now + ms);
+}
+
+export function applyStun(e, ms, now) {
+  e.stunUntil = Math.max(e.stunUntil, now + ms);
+}
