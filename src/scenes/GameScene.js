@@ -5,7 +5,8 @@ import { applyDamage, canPlace } from '../logic/combat.js';
 import { makeTextures, PALETTE } from '../art/textures.js';
 import { spawnEnemy, stepEnemy, removeEnemy, enemyReward, enemyLeak } from '../entities/Enemy.js';
 import { placeTower, stepTower, upgradeTowerStats } from '../entities/Tower.js';
-import { upgradeCost } from '../logic/combat.js';
+import { upgradeCost, sauce } from '../logic/combat.js';
+import { spawnVan, stepVan } from '../entities/PizzaVan.js';
 import { crossedThresholds } from '../logic/boss.js';
 import { createSword } from '../logic/sword.js';
 import { rollFlip, flipModifiers } from '../logic/flip.js';
@@ -38,6 +39,8 @@ export default class GameScene extends Phaser.Scene {
     this.upside = false;
     this.upsideUntil = 0;
     this.flipPending = false;
+    this.pizzaReadyAt = 0;
+    this.vans = [];
     this.boss = null;
     this.sfx = sfx;
     this.wave = 0;
@@ -56,6 +59,7 @@ export default class GameScene extends Phaser.Scene {
     this.scene.launch('UI');
     this.input.keyboard.on('keydown-SPACE', () => this.startWave());
     this.input.keyboard.on('keydown-S', () => this.useSword());
+    this.input.keyboard.on('keydown-P', () => this.callPizza());
     if (new URLSearchParams(location.search).has('debug')) {
       // Debug: B jumps straight to the boss wave.
       this.input.keyboard.on('keydown-B', () => { if (!this.waveActive) { this.wave = CONFIG.waves.count - 1; this.wallet.earn(2000); this.emitAll(); this.startWave(); } });
@@ -188,6 +192,18 @@ export default class GameScene extends Phaser.Scene {
         else this.hit(e, e.hp * 10 + 1);   // slices through like butter
       }
     });
+  }
+
+  callPizza() {
+    if (this.over || this.now < this.pizzaReadyAt || !this.enemies.some(e => e.alive)) return;
+    if (!this.wallet.spend(CONFIG.pizza.cost)) return;
+    this.pizzaReadyAt = this.now + CONFIG.pizza.cooldownMs;
+    this.vans.push(spawnVan(this));
+    this.game.events.emit('tokens', this.wallet.tokens);
+    this.game.events.emit('pizza', CONFIG.pizza.cooldownMs);
+    const toast = this.add.text(640, 660, 'The kids ordered Pizza Hut. Extra sauce.', { fontFamily: 'monospace', fontSize: '20px', color: '#ffffff', stroke: '#d1201a', strokeThickness: 5 })
+      .setOrigin(0.5).setDepth(30);
+    this.tweens.add({ targets: toast, alpha: 0, y: 630, delay: 1800, duration: 600, onComplete: () => toast.destroy() });
   }
 
   bossEntrance(e) {
@@ -331,6 +347,11 @@ export default class GameScene extends Phaser.Scene {
   hit(target, damage) {
     const prevHp = target.hp;
     const { killed } = applyDamage(target, damage, this.now);
+    this.afterDamage(target, prevHp, killed);
+  }
+
+  // Shared bookkeeping after any damage: boss phases, rewards, removal.
+  afterDamage(target, prevHp, killed) {
     if (target.type === 'boss') {
       crossedThresholds(prevHp, target.hp, target.maxHp).forEach(() => this.bossPhase());
       this.game.events.emit('bossHp', Math.max(0, target.hp), target.maxHp);
@@ -374,6 +395,15 @@ export default class GameScene extends Phaser.Scene {
     this.now += dt;   // game clock: only advances with frames, never jumps
     const now = this.now;
     if (this.upside && now >= this.upsideUntil) this.exitUpside();
+    for (const van of this.vans) {
+      for (const e of stepVan(this, van, dt, this.enemies)) {
+        const prevHp = e.hp;
+        const { killed } = sauce(e, now);
+        sfx.splat();
+        this.afterDamage(e, prevHp, killed);
+      }
+    }
+    this.vans = this.vans.filter(v => !v.done);
     for (const e of this.enemies) {
       if (e.alive && stepEnemy(this, e, dt, now)) this.leak(e);
     }

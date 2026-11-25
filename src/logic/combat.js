@@ -69,3 +69,9 @@ export function applySlow(e, factor, ms, now) {
 export function applyStun(e, ms, now) {
   e.stunUntil = Math.max(e.stunUntil, now + ms);
 }
+
+// Pizza Hut van: tomato sauce marks the enemy (slower, takes extra damage), then splashes it.
+export function sauce(e, now) {
+  e.saucedUntil = now + CONFIG.pizza.saucedMs;
+  return applyDamage(e, CONFIG.pizza.damage, now);
+}
