@@ -9,6 +9,12 @@ import EndScene from './scenes/EndScene.js';
 const params = new URLSearchParams(location.search);
 const forceCanvas = params.has('canvas');
 
+// Wait (briefly) for the pixel fonts so Phaser doesn't bake text in a fallback font.
+await Promise.race([
+  Promise.all([document.fonts.load('22px "VT323"'), document.fonts.load('16px "Press Start 2P"')]),
+  new Promise(r => setTimeout(r, 2500)),
+]).catch(() => {});
+
 export const game = new Phaser.Game({
   type: forceCanvas ? Phaser.CANVAS : Phaser.AUTO,
   parent: 'game',

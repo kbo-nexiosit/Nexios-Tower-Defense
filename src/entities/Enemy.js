@@ -8,7 +8,7 @@ export function spawnEnemy(scene, type, hpScale = 1, mods = { hpMult: 1, speedMu
   e.speed *= mods.speedMult;
   const p = pointAt(ROAD, 0);
   e.x = p.x; e.y = p.y;
-  e.sprite = scene.add.image(p.x, p.y, type).setDepth(type === 'boss' ? 6 : 5);
+  e.sprite = scene.add.sprite(p.x, p.y, type, 0).setDepth(type === 'boss' ? 6 : 5).play(type + '-walk');
   if (type !== 'boss') e.bar = scene.add.rectangle(p.x, p.y - 18, 24, 3, 0x6bff6b).setDepth(7);
   e.upside = mods.hpMult > 1;
   return e;
@@ -18,6 +18,7 @@ export function spawnEnemy(scene, type, hpScale = 1, mods = { hpMult: 1, speedMu
 export function stepEnemy(scene, e, dtMs, now) {
   e.distance += effectiveSpeed(e, now) * dtMs / 1000;
   const p = pointAt(ROAD, e.distance);
+  if (e.type === 'crawler' || e.type === 'brute') e.sprite.setFlipX(p.x < e.x - 0.01 ? true : p.x > e.x + 0.01 ? false : e.sprite.flipX);
   e.x = p.x; e.y = p.y;
   e.sprite.setPosition(p.x, p.y);
   if (e.type === 'swarm') e.sprite.y += Math.sin(now / 90 + e.distance) * 3;

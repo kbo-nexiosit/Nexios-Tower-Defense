@@ -3,7 +3,9 @@ import { pickTarget, towerStats, applySlow, applyStun } from '../logic/combat.js
 export function placeTower(scene, type, x, y) {
   const t = { type, level: 0, x, y, lastFire: -Infinity, ...towerStats(type, 0) };
   t.sprite = scene.add.image(x, y, type).setDepth(4).setInteractive({ useHandCursor: true });
-  t.pips = scene.add.text(x, y + 18, '', { fontFamily: 'monospace', fontSize: '10px', color: '#ffc94a' }).setOrigin(0.5).setDepth(4);
+  // a little idle bob so the kids feel alive
+  scene.tweens.add({ targets: t.sprite, y: y - 2, duration: 600 + Math.random() * 300, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+  t.pips = scene.add.text(x, y + 26, '', { fontFamily: 'monospace', fontSize: '10px', color: '#ffc94a' }).setOrigin(0.5).setDepth(4);
   t.sprite.on('pointerdown', (p, lx, ly, ev) => { ev.stopPropagation(); scene.selectTower(t); });
   t.sprite.on('pointerover', () => { if (!scene.selected) scene.rangeRing.setPosition(t.x, t.y).setRadius(t.range).setVisible(true); scene.ghost.setAlpha(0); });
   t.sprite.on('pointerout', () => { if (!scene.selected) scene.rangeRing.setVisible(false); scene.ghost.setAlpha(1); });

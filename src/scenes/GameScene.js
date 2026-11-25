@@ -2,7 +2,11 @@ import CONFIG from '../config.js';
 import { ROAD } from '../logic/path.js';
 import { createWallet } from '../logic/economy.js';
 import { applyDamage, canPlace } from '../logic/combat.js';
-import { makeTextures, PALETTE } from '../art/textures.js';
+import { makeTextures, PALETTE, PIXEL_FONT } from '../art/textures.js';
+import { makeGround, makeVignette } from '../art/environment.js';
+
+const OFFICE = { x: 1094, y: 300, w: 170, h: 226 };
+const MEDIA = { x: 1094, y: 70, w: 170, h: 186 };
 import { spawnEnemy, stepEnemy, removeEnemy, enemyReward, enemyLeak } from '../entities/Enemy.js';
 import { placeTower, stepTower, upgradeTowerStats } from '../entities/Tower.js';
 import { upgradeCost, sauce } from '../logic/combat.js';
@@ -275,63 +279,33 @@ export default class GameScene extends Phaser.Scene {
   }
 
   drawMap() {
-    const g = this.add.graphics().setDepth(0);
-    g.fillStyle(PALETTE.grass); g.fillRect(0, 0, 1280, 720);
-    // Little town: dark houses with a few warm windows, kept off the road.
-    const rnd = new Phaser.Math.RandomDataGenerator(['upside']);
-    for (let i = 0; i < 70; i++) {
-      const x = rnd.between(60, 1040), y = rnd.between(80, 690);
-      if (!canPlace({ x, y }, [], ROAD, 50, 0)) continue;
-      g.fillStyle(0x1d1a24); g.fillRect(x - 14, y - 10, 28, 20);
-      g.fillStyle(0x2a2433); g.fillTriangle(x - 17, y - 10, x + 17, y - 10, x, y - 22);
-      if (rnd.frac() < 0.5) { g.fillStyle(PALETTE.amber, 0.8); g.fillRect(x - 8, y - 4, 5, 5); }
-    }
-    // Road.
-    const road = this.add.graphics().setDepth(1);
-    road.lineStyle(52, PALETTE.roadEdge); road.strokePoints(ROAD.map(p => new Phaser.Math.Vector2(p.x, p.y)));
-    road.lineStyle(44, PALETTE.road); road.strokePoints(ROAD.map(p => new Phaser.Math.Vector2(p.x, p.y)));
-    for (let i = 0; i < ROAD.length; i++) { road.fillStyle(PALETTE.road); road.fillCircle(ROAD[i].x, ROAD[i].y, 22); }
-    // The Rift.
+    const LAMPS = [[120, 110], [300, 340], [210, 600], [490, 610], [590, 400], [690, 180], [870, 320], [770, 600], [960, 580], [1040, 440]];
+    makeGround(this, ROAD, { lamps: LAMPS, office: OFFICE, media: MEDIA });
+    makeVignette(this);
+    this.add.image(0, 0, 'ground').setOrigin(0).setScale(2).setDepth(0);
+    this.add.image(0, 0, 'vignette').setOrigin(0).setScale(2).setDepth(19);
+    // The Rift: a pulsing red gash with a dark core.
     const rift = this.add.ellipse(14, 150, 34, 90, PALETTE.rift).setDepth(2);
     this.add.ellipse(14, 150, 14, 70, 0x2a0008).setDepth(2);
     this.tweens.add({ targets: rift, scaleX: 1.25, alpha: 0.7, yoyo: true, repeat: -1, duration: 700 });
-    this.drawStreetlights();
+    this.drawStreetlights(LAMPS);
     this.drawBuildings();
   }
 
-  // Warm streetlight pools along the road; a few flicker.
-  drawStreetlights() {
-    const spots = [[120, 110], [300, 340], [210, 600], [490, 610], [590, 400], [690, 180], [870, 320], [770, 600], [960, 580], [1040, 440]];
+  // Warm streetlight pools over the pixel lamp posts; a few flicker.
+  drawStreetlights(spots) {
     spots.forEach(([x, y], i) => {
-      // Soft radial falloff from stacked rings.
       const glow = this.add.container(x, y).setDepth(1.6);
       for (let r = 56, a = 0.025; r > 6; r -= 8, a += 0.012) glow.add(this.add.circle(0, 0, r, 0xffa84a, a).setBlendMode(Phaser.BlendModes.ADD));
-      this.add.rectangle(x, y, 4, 4, 0xfff2c4).setDepth(1.7);
       if (i % 3 === 1) this.tweens.add({ targets: glow, alpha: 0.02, duration: 60, yoyo: true, repeat: -1, repeatDelay: Phaser.Math.Between(1500, 4000) });
     });
   }
 
   drawBuildings() {
-    const g = this.add.graphics().setDepth(2);
-    // DPG Media: big grey media block.
-    g.fillStyle(0x3b3f4a); g.fillRect(1095, 70, 170, 185);
-    g.fillStyle(0x2a2d36); for (let r = 0; r < 6; r++) for (let c = 0; c < 6; c++) g.fillRect(1105 + c * 26, 104 + r * 24, 18, 14);
-    g.fillStyle(0xffe08a, 0.7); [[1, 2], [3, 0], [4, 4], [0, 5]].forEach(([r, c]) => g.fillRect(1105 + c * 26, 104 + r * 24, 18, 14));
-    this.add.text(1180, 86, 'DPG MEDIA', { fontFamily: 'monospace', fontSize: '16px', color: '#e8e8f0', fontStyle: 'bold' }).setOrigin(0.5).setDepth(3);
-    // NexiosIT office: 4 storeys of glass.
-    const ox = 1095, oy = 300, ow = 170, oh = 225, floor = oh / 4;
-    g.fillStyle(PALETTE.glassDark); g.fillRect(ox, oy, ow, oh);
-    for (let f = 0; f < 4; f++) {
-      for (let c = 0; c < 6; c++) {
-        g.fillStyle(PALETTE.glass, (f + c) % 3 === 0 ? 0.95 : 0.55);
-        g.fillRect(ox + 6 + c * 27, oy + 8 + f * floor, 23, floor - 14);
-      }
-      g.fillStyle(PALETTE.steel); g.fillRect(ox, oy + (f + 1) * floor - 4, ow, 4);
-    }
-    g.fillStyle(0x0b0b14); g.fillRect(ox - 6, 388, 12, 24);           // entrance where the road ends
-    const logo = this.add.image(ox + ow / 2, oy - 14, 'logo').setDepth(3);
+    this.add.text(MEDIA.x + MEDIA.w / 2, MEDIA.y + 14, 'DPG MEDIA', { fontFamily: PIXEL_FONT, fontSize: '11px', color: '#e8e8f0' }).setOrigin(0.5).setDepth(3);
+    const logo = this.add.image(OFFICE.x + OFFICE.w / 2, OFFICE.y - 14, 'logo').setDepth(3);
     logo.setScale(Math.min(150 / logo.width, 26 / logo.height));
-    this.officeFlash = this.add.rectangle(ox + ow / 2, oy + oh / 2, ow, oh, 0xff0000, 0).setDepth(3);
+    this.officeFlash = this.add.rectangle(OFFICE.x + OFFICE.w / 2, OFFICE.y + OFFICE.h / 2, OFFICE.w, OFFICE.h, 0xff0000, 0).setDepth(3);
   }
 
   isFree(p) {

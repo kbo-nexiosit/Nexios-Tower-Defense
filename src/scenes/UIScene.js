@@ -3,7 +3,7 @@ import { HUD_H } from './GameScene.js';
 import * as sfx from '../audio/sfx.js';
 import { upgradeCost } from '../logic/combat.js';
 
-const FONT = { fontFamily: 'monospace', fontSize: '16px', color: '#e8e8f0' };
+const FONT = { fontFamily: '"VT323", monospace', fontSize: '22px', color: '#e8e8f0' };
 export const TOWER_INFO = [
   { type: 'slingshot', label: 'Slingshot' },
   { type: 'walkie', label: 'Walkie' },
@@ -17,7 +17,7 @@ export default class UIScene extends Phaser.Scene {
   create() {
     this.add.rectangle(0, 0, 1280, HUD_H, 0x07070d, 0.92).setOrigin(0);
     this.add.rectangle(0, HUD_H, 1280, 2, 0xff3fa4, 0.8).setOrigin(0);
-    this.tokensText = this.add.text(14, 8, '', { ...FONT, color: '#ffb627', fontSize: '18px' });
+    this.tokensText = this.add.text(14, 8, '', { ...FONT, color: '#ffb627', fontSize: '24px' });
     this.healthText = this.add.text(14, 32, '', { ...FONT, color: '#6bff6b' });
     this.waveText = this.add.text(150, 32, '', { ...FONT, color: '#ff8fc8' });
 
@@ -27,13 +27,13 @@ export default class UIScene extends Phaser.Scene {
 
     // Start-wave button (also: SPACE).
     this.startBtn = this.add.rectangle(1112, 28, 150, 44, 0x3a0d1f).setStrokeStyle(2, 0xff3fa4).setInteractive({ useHandCursor: true });
-    this.startTxt = this.add.text(1112, 28, '▶ START WAVE', { ...FONT, fontSize: '15px', color: '#ff3fa4' }).setOrigin(0.5);
+    this.startTxt = this.add.text(1112, 28, '▶ START WAVE', { ...FONT, fontSize: '20px', color: '#ff3fa4' }).setOrigin(0.5);
     this.startBtn.on('pointerdown', () => this.scene.get('Game').startWave());
     this.tweens.add({ targets: this.startTxt, alpha: 0.5, duration: 500, yoyo: true, repeat: -1 });
 
     // Upgrade panel for the selected kid.
     this.upBtn = this.add.rectangle(710, 28, 110, 44, 0x2a2310).setStrokeStyle(2, 0xffc94a).setInteractive({ useHandCursor: true }).setVisible(false);
-    this.upTxt = this.add.text(710, 28, '', { ...FONT, fontSize: '13px', color: '#ffc94a', align: 'center' }).setOrigin(0.5).setVisible(false);
+    this.upTxt = this.add.text(710, 28, '', { ...FONT, fontSize: '18px', color: '#ffc94a', align: 'center' }).setOrigin(0.5).setVisible(false);
     this.upBtn.on('pointerdown', () => this.scene.get('Game').upgradeSelected());
 
     // Boss health bar (no name, no title).
@@ -43,12 +43,12 @@ export default class UIScene extends Phaser.Scene {
     // Pizza Hut van (also: P), with a cooldown bar.
     this.pizzaBtn = this.add.rectangle(830, 28, 120, 44, 0x2a0e0c).setStrokeStyle(2, 0xd1201a).setInteractive({ useHandCursor: true });
     this.pizzaCool = this.add.rectangle(770, 28, 120, 44, 0x000000, 0.65).setOrigin(0, 0.5).setScale(0, 1);
-    this.pizzaTxt = this.add.text(830, 28, `🍕 PIZZA [P]\n${CONFIG.pizza.cost} tok`, { ...FONT, fontSize: '12px', color: '#ffd6cf', align: 'center' }).setOrigin(0.5);
+    this.pizzaTxt = this.add.text(830, 28, `🍕 PIZZA [P]\n${CONFIG.pizza.cost} tok`, { ...FONT, fontSize: '16px', color: '#ffd6cf', align: 'center' }).setOrigin(0.5);
     this.pizzaBtn.on('pointerdown', () => this.scene.get('Game').callPizza());
 
     // Nexios Sword button (also: S).
     this.swordBtn = this.add.rectangle(955, 28, 120, 44, 0x10141c).setStrokeStyle(2, 0x3a3a55).setInteractive({ useHandCursor: true });
-    this.swordTxt = this.add.text(955, 28, '⚔ SWORD [S]', { ...FONT, fontSize: '13px', color: '#dfe6ee' }).setOrigin(0.5);
+    this.swordTxt = this.add.text(955, 28, '⚔ SWORD [S]', { ...FONT, fontSize: '18px', color: '#dfe6ee' }).setOrigin(0.5);
     this.swordBtn.on('pointerdown', () => this.scene.get('Game').useSword());
     this.swordGlow = this.tweens.add({ targets: this.swordBtn, alpha: 0.55, duration: 400, yoyo: true, repeat: -1, paused: true });
     this.setSword(0);
@@ -94,8 +94,9 @@ export default class UIScene extends Phaser.Scene {
   makeTowerButton(info, x) {
     const cost = CONFIG.towers[info.type].cost;
     const bg = this.add.rectangle(x, 28, 94, 44, 0x1b1b2a).setStrokeStyle(2, 0x3a3a55).setInteractive({ useHandCursor: true });
-    const icon = this.add.image(x - 32, 28, info.type).setScale(0.9);
-    const label = this.add.text(x - 12, 12, `${info.label}\n${cost} tok`, { ...FONT, fontSize: '12px' });
+    const icon = this.add.image(x - 30, 28, info.type);
+    icon.setScale(Math.min(30 / icon.width, 38 / icon.height));
+    const label = this.add.text(x - 12, 12, `${info.label}\n${cost} tok`, { ...FONT, fontSize: '16px' });
     bg.on('pointerdown', () => { this.registry.set('selected', info.type); this.refreshButtons(); });
     return { ...info, cost, bg, icon, label };
   }
@@ -130,16 +131,16 @@ export default class UIScene extends Phaser.Scene {
 
   banner(text, color = '#ffffff', sub = '', withBell = true) {
     const bell = this.add.image(640, 250, 'bell').setDepth(30).setScale(2).setAngle(-25).setVisible(withBell);
-    const t = this.add.text(640, 340, text, { fontFamily: 'monospace', fontSize: '48px', color, fontStyle: 'bold', stroke: '#000', strokeThickness: 6 })
+    const t = this.add.text(640, 340, text, { fontFamily: '"Press Start 2P", monospace', fontSize: '34px', color, fontStyle: 'bold', stroke: '#000', strokeThickness: 6 })
       .setOrigin(0.5).setDepth(30);
-    const st = this.add.text(640, 392, sub, { fontFamily: 'monospace', fontSize: '20px', color: '#ffffff', stroke: '#000', strokeThickness: 4 })
+    const st = this.add.text(640, 392, sub, { fontFamily: '"VT323", monospace', fontSize: '27px', color: '#ffffff', stroke: '#000', strokeThickness: 4 })
       .setOrigin(0.5).setDepth(30);
     this.tweens.add({ targets: bell, angle: 25, duration: 220, yoyo: true, repeat: 3, ease: 'Sine.easeInOut' });
     this.tweens.add({ targets: [bell, t, st], alpha: 0, delay: 1800, duration: 500, onComplete: () => { bell.destroy(); t.destroy(); st.destroy(); } });
   }
 
   tip(text) {
-    const t = this.add.text(640, 660, text, { fontFamily: 'monospace', fontSize: '18px', color: '#ffc94a', stroke: '#000', strokeThickness: 5 })
+    const t = this.add.text(640, 660, text, { fontFamily: '"VT323", monospace', fontSize: '24px', color: '#ffc94a', stroke: '#000', strokeThickness: 5 })
       .setOrigin(0.5).setDepth(30);
     this.tweens.add({ targets: t, alpha: 0, delay: 4000, duration: 800, onComplete: () => t.destroy() });
   }
@@ -155,7 +156,7 @@ export default class UIScene extends Phaser.Scene {
   }
 
   toast(text) {
-    const t = this.add.text(640, 660, text, { fontFamily: 'monospace', fontSize: '20px', color: '#ffffff', stroke: '#d1201a', strokeThickness: 5 })
+    const t = this.add.text(640, 660, text, { fontFamily: '"VT323", monospace', fontSize: '27px', color: '#ffffff', stroke: '#d1201a', strokeThickness: 5 })
       .setOrigin(0.5).setDepth(30);
     this.tweens.add({ targets: t, alpha: 0, y: 630, delay: 1800, duration: 600, onComplete: () => t.destroy() });
   }

@@ -11,7 +11,7 @@ export function spawnVan(scene) {
     sauced: new Set(),
     lastSplat: total,
     sprite: scene.add.image(start.x, start.y, 'van').setDepth(6),
-    label: scene.add.text(start.x, start.y - 22, 'PIZZA HUT', { fontFamily: 'monospace', fontSize: '10px', color: '#ffffff', fontStyle: 'bold', stroke: '#d1201a', strokeThickness: 3 })
+    label: scene.add.text(start.x, start.y - 22, 'PIZZA HUT', { fontFamily: '"VT323", monospace', fontSize: '14px', color: '#ffffff', fontStyle: 'bold', stroke: '#d1201a', strokeThickness: 3 })
       .setOrigin(0.5).setDepth(6),
     done: false,
   };
