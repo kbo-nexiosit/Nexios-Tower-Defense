@@ -1,0 +1,376 @@
+<title>Upside Defense deck</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap">
+<style>
+/* Layout: a column of 1280x720 Nexios slides, each scaled to the window; P presents one at a time. */
+:root { --stage: #E2E8F0; --stage-fg: #475569; --stage-line: #C3CBD6; --stage-btn: #001E32; --stage-btn-fg: #FFFFFF; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --stage: #07131D; --stage-fg: #93A5B5; --stage-line: #2A4055; --stage-btn: #2563EB; --stage-btn-fg: #FFFFFF; color-scheme: dark } }
+:root[data-theme="dark"] { --stage: #07131D; --stage-fg: #93A5B5; --stage-line: #2A4055; --stage-btn: #2563EB; --stage-btn-fg: #FFFFFF; color-scheme: dark }
+
+/*ONBOARDING_CSS*/
+
+@page { size: 1280px 720px landscape; margin: 0; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--stage); color: var(--stage-fg); font-family: "Lato", Arial, system-ui, sans-serif; }
+.bar { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; max-width: 1280px; margin: 0 auto; padding-block: 16px 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); font-size: 14px; box-sizing: content-box; }
+.bar b { font-weight: 700; }
+.bar button { font: inherit; font-weight: 700; color: var(--stage-btn-fg); background: var(--stage-btn); border: 0; border-radius: 8px; padding: 9px 16px; cursor: pointer; }
+.bar button:focus-visible, .frame:focus-visible { outline: 3px solid #2563EB; outline-offset: 3px; }
+.deck { display: grid; gap: 24px; justify-items: center; padding-block: 16px 32px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.frame { position: relative; width: 100%; max-width: 1280px; aspect-ratio: 16 / 9; overflow: hidden; box-shadow: 0 16px 32px -8px rgba(0,30,50,.18); }
+.frame > .ob-slide { position: absolute; left: 0; top: 0; transform-origin: 0 0; transform: scale(var(--s, 1)); }
+
+/* Present mode: one slide, fitted to the window. */
+body.present { overflow: hidden; background: #000; }
+body.present .bar { display: none; }
+body.present .deck { display: block; padding: 0; position: fixed; inset: 0; }
+body.present .frame { display: none; box-shadow: none; max-width: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: min(100vw, calc(100vh * 16 / 9)); }
+body.present .frame.current { display: block; }
+
+@media print {
+  body { background: #fff; }
+  .bar { display: none; }
+  .deck { display: block; padding: 0; }
+  .frame { width: 1280px; max-width: none; height: 720px; aspect-ratio: auto; box-shadow: none; break-after: page; page-break-after: always; }
+  .frame:last-child { break-after: auto; page-break-after: auto; }
+  .frame > .ob-slide { transform: none; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+/* Local helpers — everything visual comes from the onboarding tokens. */
+.row { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 20px; }
+.ob-logo { align-self: flex-start; width: auto; flex: none; }
+.shot { position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 10px; border: 1px solid var(--ob-border-2); background: #0B0B14; }
+.ob-slide--navy .shot { border-color: rgba(255,255,255,.13); }
+/* Screenshots are 1568x751 browser captures; the game canvas sits at 7.45%..92.55% of the width.
+   --z zooms, --fx/--fy pick the top-left corner of the visible window as a fraction of the canvas. */
+.shot img { position: absolute; max-width: none; display: block;
+  width: calc(117.5% * var(--z, 1));
+  left: calc(-1 * (8.76% + var(--fx, 0) * 100%) * var(--z, 1));
+  top: calc(-1 * var(--fy, 0) * 100% * var(--z, 1)); }
+.cap { font-size: 14px; line-height: 1.45; color: var(--ob-slate-500); margin: 10px 0 0; }
+.idx { display: grid; gap: 0; }
+.idx > div { display: grid; grid-template-columns: 132px 1fr; gap: 22px; padding: 17px 0; border-bottom: 1px solid var(--ob-border); align-items: baseline; }
+.idx > div:first-child { border-top: 1px solid var(--ob-border); }
+.idx .k { font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--ob-blue); }
+.idx p { font-size: 16px; line-height: 1.5; margin: 0; color: var(--ob-slate-600); }
+.idx p b { color: var(--ob-slate-900); }
+.tetro { display: flex; gap: 26px; align-items: flex-end; }
+.hud { display: flex; gap: 6px; align-items: stretch; font-family: "Courier New", monospace; font-size: 17px; line-height: 1.25; text-align: center; background: #07070D; padding: 8px; border-radius: 8px; align-self: flex-start; }
+.hud span { display: flex; align-items: center; justify-content: center; padding: 10px 16px; border: 2px solid; white-space: pre-line; }
+.hud .up { color: #FFC94A; border-color: #FFC94A; background: #2A2310; }
+.hud .sell { color: #6BFF9A; border-color: #6BFF9A; background: #0F2416; }
+.hud .pz { color: #FFD6CF; border-color: #D1201A; background: #2A0E0C; }
+.hud .sw { color: #8A93A6; border-color: #3A3A55; background: #10141C; }
+.dot { display: block; width: 11px; height: 11px; border-radius: 999px; }
+.t3 .ob-card__p { font-size: 17px !important; line-height: 1.5; color: var(--ob-slate-600); }
+.g3 .ob-card__p { font-size: 16px !important; }
+.tl .ob-card__p { font-size: 14.5px; }
+.tl .ob-card__h { font-size: 19px; }
+a.play { color: #fff; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 6px; }
+</style>
+
+<div class="bar">
+  <span><b>Upside Defense</b> · 10 slides · 6 to 7 minutes</span>
+  <span>Arrow keys or click to move · <b>Esc</b> leaves present mode</span>
+  <button id="present" type="button">Present →</button>
+</div>
+
+<div class="deck" id="deck">
+
+  <!-- 01 · TITLE -->
+  <div class="frame"><section class="ob-slide ob-slide--navy">
+    <div class="ob-body">
+      <img class="ob-logo" src="asset:wordmark" alt="Nexios IT" style="height:22px">
+      <div class="ob-dashes" style="margin-top:14px">
+        <span style="background:var(--ob-blue)"></span><span style="background:var(--ob-orange)"></span><span style="background:var(--ob-fuchsia)"></span><span style="background:var(--ob-green)"></span>
+      </div>
+      <h1 class="ob-title ob-title--lg" style="margin-top:auto; max-width:19ch">Upside Defense: build the maze, hold the office</h1>
+      <p class="ob-lede" style="max-width:62ch">A tower defence game built in one day. Monsters pour out of a Rift, and the only thing between them and the Nexios office is the maze you build from Tetris blocks.</p>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px 48px; margin-top:32px; max-width:760px">
+        <div class="ob-chapter ob-c1"><span class="ob-chapter__num">01</span><span class="ob-chapter__label">Look and feel</span></div>
+        <div class="ob-chapter ob-c1"><span class="ob-chapter__num">05</span><span class="ob-chapter__label">The new colleague</span></div>
+        <div class="ob-chapter ob-c1"><span class="ob-chapter__num">02</span><span class="ob-chapter__label">The twist</span></div>
+        <div class="ob-chapter ob-c1"><span class="ob-chapter__num">06</span><span class="ob-chapter__label">What makes it special</span></div>
+        <div class="ob-chapter ob-c1"><span class="ob-chapter__num">03</span><span class="ob-chapter__label">Gameplay</span></div>
+        <div class="ob-chapter ob-c1"><span class="ob-chapter__num">07</span><span class="ob-chapter__label">Where to play it</span></div>
+        <div class="ob-chapter ob-c1"><span class="ob-chapter__num">04</span><span class="ob-chapter__label">Nexios references</span></div>
+      </div>
+      <hr class="ob-rule" style="margin-top:26px">
+      <p class="ob-eyebrow" style="margin:14px 0 0">Intent Engineering Bootcamp · Day 5 hackathon · 25 November 2026</p>
+    </div>
+  </section></div>
+
+  <!-- 02 · LOOK AND FEEL -->
+  <div class="frame"><section class="ob-slide ob-slide--paper">
+    <div class="ob-body">
+      <p class="ob-eyebrow">— Look and feel</p>
+      <h2 class="ob-title" style="max-width:26ch">Pixel art from the 80s, drawn entirely in code</h2>
+      <div style="display:grid; grid-template-columns:600px 1fr; gap:40px; margin-top:34px; align-items:start">
+        <div>
+          <div class="shot"><img src="img/title.jpg" alt="Title screen: three kids with flashlights face monsters at a glowing red Rift"></div>
+          <p class="cap">The title screen. Kids with flashlights on the left, the Rift on the right.</p>
+        </div>
+        <div>
+          <div class="idx">
+            <div><span class="k">Why</span><p>The first version was circles and blocks. It looked immature, so we <b>replaced it with detailed pixel art</b>.</p></div>
+            <div><span class="k">How</span><p>A small pixel engine draws every sprite at low resolution, adds outlines and shading, then scales it up. The Nexios logo is the only image file.</p></div>
+            <div><span class="k">Mood</span><p>A small town at night, inspired by <i>Stranger Things</i>. No names, characters or logos from the show.</p></div>
+            <div><span class="k">Sound</span><p>An original synth track and every effect are generated in the browser.</p></div>
+          </div>
+          <div class="ob-chips" style="margin-top:16px"><span class="ob-chip">Phaser 3.90</span><span class="ob-chip">Press Start 2P</span><span class="ob-chip">VT323</span><span class="ob-chip">Web Audio</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="ob-footer"><span class="ob-footer__brand">Nexios Consulting Group</span><span class="ob-footer__num">02</span></div>
+  </section></div>
+
+  <!-- 03 · THE TWIST -->
+  <div class="frame"><section class="ob-slide ob-slide--tint">
+    <div class="ob-body">
+      <p class="ob-eyebrow">— The twist</p>
+      <h2 class="ob-title" style="max-width:26ch">The twist was Tetris, so the towers became the maze</h2>
+      <p class="ob-lede" style="max-width:66ch">The first version had a fixed road. At 11:00 it made way for an open field where every tower is a Tetris block.</p>
+      <div class="tetro" style="margin-top:34px"><!--TETRO--></div>
+      <div class="row t3" style="margin-top:38px; gap:28px">
+        <div>
+          <p class="ob-colhead ob-accent-1">Blocks</p>
+          <p class="ob-card__p" style="font-size:14px">Towers arrive as random Tetris blocks, dealt from a fair bag of the seven shapes. You see the current one and the next. Rotate, drop, then pick the kid who runs it.</p>
+        </div>
+        <div>
+          <p class="ob-colhead ob-accent-2">Maze</p>
+          <p class="ob-card__p" style="font-size:14px">Monsters find their own way around whatever you build. A drop that would close the last route is refused, so the path is never fully blocked.</p>
+        </div>
+        <div>
+          <p class="ob-colhead ob-accent-3">Edges</p>
+          <p class="ob-card__p" style="font-size:14px">Only the squares that touch open ground fire. Pack blocks together and the inner squares turn into stone walls.</p>
+        </div>
+      </div>
+      <hr class="ob-rule" style="margin-top:auto; background:var(--ob-border-2)">
+      <p class="ob-lede" style="margin:16px 0 26px; font-weight:700; color:var(--ob-slate-900); font-size:17px">The road version still runs at /classic/ as a fallback.</p>
+    </div>
+    <div class="ob-footer"><span class="ob-footer__brand">Nexios Consulting Group</span><span class="ob-footer__num">03</span></div>
+  </section></div>
+
+  <!-- 04 · GAMEPLAY -->
+  <div class="frame"><section class="ob-slide ob-slide--paper">
+    <div class="ob-body">
+      <p class="ob-eyebrow">— Gameplay</p>
+      <h2 class="ob-title" style="max-width:28ch">One run, from the first block to the leaderboard</h2>
+      <div class="row g3" style="margin-top:30px; gap:28px">
+        <div>
+          <p class="ob-colhead ob-accent-1">Start</p>
+          <div class="shot"><img src="img/start.jpg" alt="First wave: three blocks on the field and crawlers walking around them"></div>
+          <p class="ob-card__p" style="font-size:14px; margin-top:14px">160 tokens and 20 office health. Drop a few blocks, give each one a kid and press SPACE. Every monster you stop pays tokens.</p>
+        </div>
+        <div>
+          <p class="ob-colhead ob-accent-2">Middle</p>
+          <div class="shot"><img src="img/upside.jpg" alt="The board mirrored and tinted red in the Upside Down, with a boss health bar"></div>
+          <p class="ob-card__p" style="font-size:14px; margin-top:14px">Level N is N waves, then a boss. Kids upgrade to Lv10. From wave 3 the board can flip to the Upside Down for 25 seconds: tougher monsters and an inverted mouse.</p>
+        </div>
+        <div>
+          <p class="ob-colhead ob-accent-3">Endgame</p>
+          <div class="shot"><img src="img/gameover.jpg" alt="Game over screen asking for three initials"></div>
+          <p class="ob-card__p" style="font-size:14px; margin-top:14px">The run never ends in a win. Bosses return 50% tougher each lap until the office falls. Then your three initials go on the local top 10.</p>
+        </div>
+      </div>
+      <hr class="ob-rule" style="margin-top:auto">
+      <p class="ob-lede" style="margin:14px 0 28px; font-weight:700; color:var(--ob-slate-900); font-size:17px">Your maze, kids and tokens carry over from level to level. Only the monsters reset.</p>
+    </div>
+    <div class="ob-footer"><span class="ob-footer__brand">Nexios Consulting Group</span><span class="ob-footer__num">04</span></div>
+  </section></div>
+
+  <!-- 05 · REFERENCES YOU PLAY WITH -->
+  <div class="frame"><section class="ob-slide ob-slide--tint">
+    <div class="ob-body">
+      <p class="ob-eyebrow">— Nexios references</p>
+      <h2 class="ob-title" style="max-width:26ch">Three references you play with</h2>
+      <div style="display:grid; grid-template-columns:600px 1fr; gap:32px; margin-top:26px; align-items:start">
+        <div class="ob-card" style="padding:16px">
+          <div class="shot"><img src="img/sword.jpg" alt="A giant longsword with the Nexios IT wordmark on the blade sweeps across the board"></div>
+          <p class="ob-card__h" style="margin:14px 0 6px">The Nexios Sword</p>
+          <p class="ob-card__p">Clear a wave with zero leaks and the sword is yours. Press S and it sweeps the board. Bosses lose 15% of their health; everything else falls.</p>
+        </div>
+        <div style="display:grid; gap:16px">
+          <div class="ob-card" style="padding:16px; display:grid; grid-template-columns:200px 1fr; gap:18px; align-items:center">
+            <div class="shot" style="--z:2.2; --fx:.27; --fy:.18"><img src="img/bell.jpg" alt="A golden bell engraved VICTORY above the words WAVE CLEARED"></div>
+            <div><p class="ob-card__h">The victory bell</p>
+              <p class="ob-card__p">Rings on every cleared wave and pays the bonus: 10 tokens plus 3 per wave.</p></div>
+          </div>
+          <div class="ob-card" style="padding:16px; display:grid; grid-template-columns:200px 1fr; gap:18px; align-items:center">
+            <div class="shot" style="--z:2.2; --fx:.37; --fy:.14"><img src="img/pizza.jpg" alt="A small Pizza Hut van leaving a trail of red sauce on the monsters' route"></div>
+            <div><p class="ob-card__h">The Pizza Hut van</p>
+              <p class="ob-card__p">Press P and pay 50 tokens. It drives the route backwards and sprays sauce: 15 damage, 40% slower and 50% more damage taken for 4 seconds.</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ob-footer"><span class="ob-footer__brand">Nexios Consulting Group</span><span class="ob-footer__num">05</span></div>
+  </section></div>
+
+  <!-- 06 · REFERENCES IN THE SCENERY -->
+  <div class="frame"><section class="ob-slide ob-slide--paper">
+    <div class="ob-body">
+      <p class="ob-eyebrow">— Nexios references</p>
+      <h2 class="ob-title" style="max-width:28ch">And four more in the scenery and the cast</h2>
+      <div style="display:grid; grid-template-columns:1fr 540px; gap:40px; margin-top:34px; align-items:start">
+        <div class="idx">
+          <div><span class="k">The office</span><p>The base you defend is the <b>Nexios IT office</b>, with the real logo on the roof.</p></div>
+          <div><span class="k">The roof</span><p>A familiar figure stands up there. He waves at the start, rings the bell for every cleared wave and jumps when a boss falls. No name is shown.</p></div>
+          <div><span class="k">The bosses</span><p>Eight IT parodies, from The IT Partner to The Big 5 IT. <b>The Java Overlord</b> and <b>Sir .Net</b> nod to our own practices. No real company or person appears.</p></div>
+          <div><span class="k">Next door</span><p>The DPG Media building stands beside the office, as decoration.</p></div>
+        </div>
+        <div>
+          <div class="shot"><img src="img/boss.jpg" alt="Boss fight: The IT Partner in a pinstripe suit enters from the Rift; the Nexios IT office stands on the right"></div>
+          <p class="cap">The IT Partner arrives. The office, the roof and the neighbours are on the right.</p>
+        </div>
+      </div>
+    </div>
+    <div class="ob-footer"><span class="ob-footer__brand">Nexios Consulting Group</span><span class="ob-footer__num">06</span></div>
+  </section></div>
+
+  <!-- 07 · THE NEW COLLEAGUE -->
+  <div class="frame"><section class="ob-slide ob-slide--tint">
+    <div class="ob-body">
+      <p class="ob-eyebrow">— The new colleague</p>
+      <h2 class="ob-title" style="max-width:30ch">The new colleague added what a maze game was missing: selling a block</h2>
+      <div style="display:grid; grid-template-columns:1fr auto; gap:40px; align-items:center; margin-top:40px">
+        <p class="ob-lede" style="margin:0; font-size:20px; max-width:44ch">Its brief: start from a snapshot, work on its own branch, pick one missing feature, build it, test it and commit it. No questions allowed.</p>
+        <div>
+          <div class="hud"><span class="up">UPGRADE [U]
+Lv1→2 60 tok</span><span class="sell">SELL [X]
++48 tok</span><span class="pz">PIZZA [P]
+50 tok</span><span class="sw">SWORD [S]</span></div>
+          <p class="cap" style="margin-top:8px">Sketch of the top bar with the new button.</p>
+        </div>
+      </div>
+      <div style="margin-top:auto; margin-bottom:40px">
+        <hr class="ob-rule" style="background:var(--ob-border-2)">
+        <div class="row tl" style="gap:24px; margin-top:-6px">
+          <div><span class="dot" style="background:var(--ob-blue)"></span>
+            <p class="ob-eyebrow" style="margin:14px 0 6px">Explore</p>
+            <p class="ob-card__h">Found the gap</p><p class="ob-card__p">The maze carries over for the whole run, yet a misplaced block could never be taken back.</p></div>
+          <div><span class="dot" style="background:var(--ob-orange)"></span>
+            <p class="ob-eyebrow" style="margin:14px 0 6px">Decide</p>
+            <p class="ob-card__h">60% back, not 100%</p><p class="ob-card__p">You get back 60% of everything spent, upgrades included. Blocks never become free walls.</p></div>
+          <div><span class="dot" style="background:var(--ob-fuchsia)"></span>
+            <p class="ob-eyebrow" style="margin:14px 0 6px">Build</p>
+            <p class="ob-card__h">Press X to sell</p><p class="ob-card__p">The route is recomputed, and neighbours that were walled in start firing again.</p></div>
+          <div><span class="dot" style="background:var(--ob-green)"></span>
+            <p class="ob-eyebrow" style="margin:14px 0 6px">Ship</p>
+            <p class="ob-card__h">16 new tests</p><p class="ob-card__p">114 pass. Committed and pushed to the new-colleague branch. Not in the live game yet.</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="ob-footer"><span class="ob-footer__brand">Nexios Consulting Group</span><span class="ob-footer__num">07</span></div>
+  </section></div>
+
+  <!-- 08 · WHAT MAKES IT SPECIAL -->
+  <div class="frame"><section class="ob-slide ob-slide--paper">
+    <div class="ob-body">
+      <p class="ob-eyebrow">— What makes it special</p>
+      <h2 class="ob-title" style="max-width:28ch">The feature we're proudest of: the board flips like a card</h2>
+      <div style="display:grid; grid-template-columns:540px 1fr; gap:40px; margin-top:34px; align-items:start">
+        <div>
+          <div class="shot"><img src="img/flip.jpg" alt="The board caught halfway through its flip, squashed to a thin red band"></div>
+          <p class="cap">Caught mid-flip: the board turns bottom to top and shows its mirrored back.</p>
+        </div>
+        <div class="idx">
+          <div><span class="k">Upside Down</span><p>Vines, ash and red lightning on the back of the board. While it's flipped, <b>the mouse is inverted too</b>.</p></div>
+          <div><span class="k">Bosses</span><p>Each has its own twist. The Agile Firm sprints for 1 second in every 4. The Cloud Consultant goes offline. Captain Service Bus drops off passengers.</p></div>
+          <div><span class="k">Preview</span><p>Hover a block and a dashed line shows the detour the monsters would take, with the change in steps.</p></div>
+          <div><span class="k">Arcade</span><p>Three initials on a local top 10, like an 80s cabinet.</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="ob-footer"><span class="ob-footer__brand">Nexios Consulting Group</span><span class="ob-footer__num">08</span></div>
+  </section></div>
+
+  <!-- 09 · IN NUMBERS -->
+  <div class="frame"><section class="ob-slide ob-slide--navy">
+    <div class="ob-body">
+      <p class="ob-eyebrow">— In numbers</p>
+      <h2 class="ob-title" style="max-width:24ch">One day, one browser tab, no build step</h2>
+      <p class="ob-lede" style="max-width:60ch">Everything here was built on 25 November 2026 and runs from a single link.</p>
+      <hr class="ob-rule" style="margin-top:30px">
+      <div class="row" style="margin-top:28px">
+        <div class="ob-stat"><span class="ob-stat__num">8</span><span class="ob-stat__label"><b>Bosses</b> each with a twist, back 50% tougher every lap.</span></div>
+        <div class="ob-stat"><span class="ob-stat__num" style="color:var(--ob-orange)">10</span><span class="ob-stat__label"><b>Levels per kid</b> for each of the four kids.</span></div>
+        <div class="ob-stat"><span class="ob-stat__num" style="color:var(--ob-fuchsia)">98</span><span class="ob-stat__label"><b>Automated tests</b> on the live game's rules; 114 with the new colleague's branch.</span></div>
+        <div class="ob-stat"><span class="ob-stat__num" style="color:var(--ob-green)">0</span><span class="ob-stat__label"><b>Audio files</b> the music and every effect are synthesised.</span></div>
+      </div>
+      <hr class="ob-rule" style="margin-top:auto">
+      <p class="ob-card__p" style="margin-top:16px; max-width:84ch; font-size:14px">The rules live apart from the drawing code and are tested on their own. That is why a new colleague could add a feature and prove it in one sitting.</p>
+      <p class="ob-eyebrow" style="margin:10px 0 26px">Source: repository kbo-nexiosit/Nexios-Tower-Defense, 25 November 2026</p>
+    </div>
+    <div class="ob-footer"><span class="ob-footer__brand">Nexios Consulting Group</span><span class="ob-footer__num">09</span></div>
+  </section></div>
+
+  <!-- 10 · WHERE TO PLAY -->
+  <div class="frame"><section class="ob-slide ob-slide--navy">
+    <div class="ob-body">
+      <img class="ob-logo" src="asset:wordmark" alt="Nexios IT" style="height:22px">
+      <p class="ob-eyebrow" style="margin:auto 0 18px">— Where to play it</p>
+      <h2 class="ob-title ob-title--lg" style="max-width:16ch">Play it →</h2>
+      <p class="ob-quote" style="margin-top:22px"><a class="play" href="https://kbo-nexiosit.github.io/Nexios-Tower-Defense/">kbo-nexiosit.github.io/Nexios-Tower-Defense</a></p>
+      <p class="ob-lede" style="max-width:60ch">Desktop browser, keyboard and mouse. No install and no sign-up. The link follows in the chat right after this presentation.</p>
+      <div class="ob-dashes" style="margin:26px 0 22px">
+        <span style="background:var(--ob-blue)"></span><span style="background:var(--ob-orange)"></span><span style="background:var(--ob-fuchsia)"></span><span style="background:var(--ob-green)"></span>
+      </div>
+      <p class="ob-card__p" style="font-size:13px">Nexios Consulting Group NV · Medialaan 36, 1800 Vilvoorde · VAT BE 0478.895.136</p>
+    </div>
+  </section></div>
+
+</div>
+
+<script>
+(function () {
+  var frames = Array.prototype.slice.call(document.querySelectorAll('.frame'));
+  var cur = 0;
+  function fit() { frames.forEach(function (f) { var w = f.clientWidth; if (w) f.style.setProperty('--s', w / 1280); }); }
+  function show(i) {
+    cur = Math.max(0, Math.min(frames.length - 1, i));
+    frames.forEach(function (f, n) { f.classList.toggle('current', n === cur); });
+    fit();
+  }
+  function present(on, from) {
+    document.body.classList.toggle('present', on);
+    if (on) {
+      show(from || 0);
+      var el = document.documentElement;
+      if (el.requestFullscreen) { try { var p = el.requestFullscreen(); if (p && p.catch) p.catch(function () {}); } catch (e) {} }
+    } else {
+      if (document.fullscreenElement && document.exitFullscreen) { try { document.exitFullscreen(); } catch (e) {} }
+      fit();
+      frames[cur].scrollIntoView({ block: 'center' });
+    }
+  }
+  var isOn = function () { return document.body.classList.contains('present'); };
+  document.getElementById('present').addEventListener('click', function () { present(true, 0); });
+  frames.forEach(function (f, n) {
+    f.addEventListener('click', function (e) {
+      if (e.target.closest('a')) return;
+      if (!isOn()) { present(true, n); return; }
+      var r = f.getBoundingClientRect();
+      show(cur + (e.clientX - r.left < r.width * 0.3 ? -1 : 1));
+    });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'p' || e.key === 'P') { present(!isOn(), cur); return; }
+    if (!isOn()) return;
+    if (e.key === 'Escape') present(false);
+    else if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ' || e.key === 'Enter') { e.preventDefault(); show(cur + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp' || e.key === 'Backspace') { e.preventDefault(); show(cur - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(frames.length - 1);
+  });
+  document.addEventListener('fullscreenchange', function () { setTimeout(fit, 50); });
+  window.addEventListener('resize', fit);
+  if (window.ResizeObserver) new ResizeObserver(fit).observe(document.getElementById('deck'));
+  fit();
+})();
+</script>
