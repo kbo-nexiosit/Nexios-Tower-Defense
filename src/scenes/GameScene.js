@@ -1,0 +1,179 @@
+import CONFIG from '../config.js';
+import { ROAD } from '../logic/path.js';
+import { createWallet } from '../logic/economy.js';
+import { applyDamage, canPlace } from '../logic/combat.js';
+import { makeTextures, PALETTE } from '../art/textures.js';
+import { spawnEnemy, stepEnemy, removeEnemy, enemyReward, enemyLeak } from '../entities/Enemy.js';
+import { placeTower, stepTower } from '../entities/Tower.js';
+
+export const HUD_H = 56;
+// Areas where kids cannot stand: the HUD, the office, the DPG building, the rift.
+const BLOCKED = [
+  { x: 0, y: 0, w: 1280, h: HUD_H + 8 },
+  { x: 1080, y: 60, w: 200, h: 205 },   // DPG Media
+  { x: 1080, y: 285, w: 200, h: 250 },  // NexiosIT office
+  { x: 0, y: 100, w: 50, h: 100 },      // the Rift
+];
+const inRect = (p, r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+
+export default class GameScene extends Phaser.Scene {
+  constructor() { super('Game'); }
+
+  preload() {
+    this.load.image('logo', './assets/nexios-logo.webp');
+  }
+
+  create() {
+    makeTextures(this);
+    this.wallet = createWallet(CONFIG.startTokens);
+    this.health = CONFIG.baseHealth;
+    this.enemies = [];
+    this.towers = [];
+    this.over = false;
+    this.registry.set('selected', 'slingshot');
+
+    this.drawMap();
+    this.ghost = this.add.circle(0, 0, 10, 0xffffff, 0.12).setStrokeStyle(2, 0xffffff, 0.5).setDepth(20).setVisible(false);
+    this.rangeRing = this.add.circle(0, 0, 10).setStrokeStyle(2, PALETTE.neonCyan, 0.8).setDepth(3).setVisible(false);
+
+    this.input.on('pointermove', p => this.updateGhost(p));
+    this.input.on('pointerdown', p => this.tryPlace(p));
+
+    this.scene.launch('UI');
+    this.emitAll();
+    this.startTestStream();
+  }
+
+  // Temporary until waves exist: a steady stream of crawlers.
+  startTestStream() {
+    this.time.addEvent({ delay: 1200, loop: true, callback: () => this.enemies.push(spawnEnemy(this, 'crawler')) });
+  }
+
+  emitAll() {
+    this.game.events.emit('tokens', this.wallet.tokens);
+    this.game.events.emit('health', this.health);
+  }
+
+  drawMap() {
+    const g = this.add.graphics().setDepth(0);
+    g.fillStyle(PALETTE.grass); g.fillRect(0, 0, 1280, 720);
+    // Little town: dark houses with a few warm windows, kept off the road.
+    const rnd = new Phaser.Math.RandomDataGenerator(['upside']);
+    for (let i = 0; i < 70; i++) {
+      const x = rnd.between(60, 1040), y = rnd.between(80, 690);
+      if (!canPlace({ x, y }, [], ROAD, 50, 0)) continue;
+      g.fillStyle(0x1d1a24); g.fillRect(x - 14, y - 10, 28, 20);
+      g.fillStyle(0x2a2433); g.fillTriangle(x - 17, y - 10, x + 17, y - 10, x, y - 22);
+      if (rnd.frac() < 0.5) { g.fillStyle(PALETTE.amber, 0.8); g.fillRect(x - 8, y - 4, 5, 5); }
+    }
+    // Road.
+    const road = this.add.graphics().setDepth(1);
+    road.lineStyle(52, PALETTE.roadEdge); road.strokePoints(ROAD.map(p => new Phaser.Math.Vector2(p.x, p.y)));
+    road.lineStyle(44, PALETTE.road); road.strokePoints(ROAD.map(p => new Phaser.Math.Vector2(p.x, p.y)));
+    for (let i = 0; i < ROAD.length; i++) { road.fillStyle(PALETTE.road); road.fillCircle(ROAD[i].x, ROAD[i].y, 22); }
+    // The Rift.
+    const rift = this.add.ellipse(14, 150, 34, 90, PALETTE.rift).setDepth(2);
+    this.add.ellipse(14, 150, 14, 70, 0x2a0008).setDepth(2);
+    this.tweens.add({ targets: rift, scaleX: 1.25, alpha: 0.7, yoyo: true, repeat: -1, duration: 700 });
+    this.drawBuildings();
+  }
+
+  drawBuildings() {
+    const g = this.add.graphics().setDepth(2);
+    // DPG Media: big grey media block.
+    g.fillStyle(0x3b3f4a); g.fillRect(1095, 70, 170, 185);
+    g.fillStyle(0x2a2d36); for (let r = 0; r < 6; r++) for (let c = 0; c < 6; c++) g.fillRect(1105 + c * 26, 104 + r * 24, 18, 14);
+    g.fillStyle(0xffe08a, 0.7); [[1, 2], [3, 0], [4, 4], [0, 5]].forEach(([r, c]) => g.fillRect(1105 + c * 26, 104 + r * 24, 18, 14));
+    this.add.text(1180, 86, 'DPG MEDIA', { fontFamily: 'monospace', fontSize: '16px', color: '#e8e8f0', fontStyle: 'bold' }).setOrigin(0.5).setDepth(3);
+    // NexiosIT office: 4 storeys of glass.
+    const ox = 1095, oy = 300, ow = 170, oh = 225, floor = oh / 4;
+    g.fillStyle(PALETTE.glassDark); g.fillRect(ox, oy, ow, oh);
+    for (let f = 0; f < 4; f++) {
+      for (let c = 0; c < 6; c++) {
+        g.fillStyle(PALETTE.glass, (f + c) % 3 === 0 ? 0.95 : 0.55);
+        g.fillRect(ox + 6 + c * 27, oy + 8 + f * floor, 23, floor - 14);
+      }
+      g.fillStyle(PALETTE.steel); g.fillRect(ox, oy + (f + 1) * floor - 4, ow, 4);
+    }
+    g.fillStyle(0x0b0b14); g.fillRect(ox - 6, 388, 12, 24);           // entrance where the road ends
+    const logo = this.add.image(ox + ow / 2, oy - 14, 'logo').setDepth(3);
+    logo.setScale(Math.min(150 / logo.width, 26 / logo.height));
+    this.officeFlash = this.add.rectangle(ox + ow / 2, oy + oh / 2, ow, oh, 0xff0000, 0).setDepth(3);
+  }
+
+  isFree(p) {
+    if (p.x < 16 || p.x > 1264 || p.y > 704) return false;
+    if (BLOCKED.some(r => inRect(p, r))) return false;
+    return canPlace(p, this.towers, ROAD);
+  }
+
+  updateGhost(p) {
+    const type = this.registry.get('selected');
+    if (!type || p.y < HUD_H) { this.ghost.setVisible(false); return; }
+    const ok = this.isFree(p) && this.wallet.tokens >= CONFIG.towers[type].cost;
+    this.ghost.setPosition(p.x, p.y).setRadius(CONFIG.towers[type].range).setVisible(true)
+      .setFillStyle(ok ? 0xffffff : 0xff3030, 0.12).setStrokeStyle(2, ok ? 0xffffff : 0xff3030, 0.5);
+  }
+
+  tryPlace(p) {
+    if (this.over || p.y < HUD_H) return;
+    this.selectTower(null);
+    const type = this.registry.get('selected');
+    if (!type || !this.isFree(p)) return;
+    if (!this.wallet.spend(CONFIG.towers[type].cost)) return;
+    this.towers.push(placeTower(this, type, p.x, p.y));
+    this.game.events.emit('tokens', this.wallet.tokens);
+    this.updateGhost(p);
+  }
+
+  selectTower(t) {
+    this.selected = t;
+    if (!t) { this.rangeRing.setVisible(false); this.game.events.emit('towerSelected', null); return; }
+    this.rangeRing.setPosition(t.x, t.y).setRadius(t.range).setVisible(true);
+    this.game.events.emit('towerSelected', t);
+  }
+
+  hit(target, damage) {
+    const { killed } = applyDamage(target, damage, this.time.now);
+    if (!killed) return;
+    this.wallet.earn(enemyReward(target));
+    this.game.events.emit('tokens', this.wallet.tokens);
+    this.puff(target.x, target.y, 0xd94a6a);
+    removeEnemy(target);
+  }
+
+  puff(x, y, color) {
+    for (let i = 0; i < 8; i++) {
+      const d = this.add.image(x, y, 'dot').setTint(color).setDepth(9);
+      this.tweens.add({ targets: d, x: x + Phaser.Math.Between(-24, 24), y: y + Phaser.Math.Between(-24, 24), alpha: 0, duration: 350, onComplete: () => d.destroy() });
+    }
+  }
+
+  leak(e) {
+    this.health = Math.max(0, this.health - enemyLeak(e));
+    removeEnemy(e);
+    this.game.events.emit('health', this.health);
+    this.cameras.main.shake(150, 0.006);
+    this.officeFlash.setAlpha(0.35);
+    this.tweens.add({ targets: this.officeFlash, alpha: 0, duration: 300 });
+    if (this.health <= 0) this.endGame(false);
+  }
+
+  endGame(won) {
+    if (this.over) return;
+    this.over = true;
+    this.time.delayedCall(600, () => { this.scene.stop('UI'); this.scene.start('End', { won }); });
+  }
+
+  update(time, delta) {
+    if (this.over) return;
+    const dt = Math.min(delta, 50);
+    const now = this.time.now;
+    for (const e of this.enemies) {
+      if (e.alive && stepEnemy(this, e, dt, now)) this.leak(e);
+    }
+    this.enemies = this.enemies.filter(e => e.alive);
+    const hit = (t, d) => this.hit(t, d);
+    for (const t of this.towers) stepTower(this, t, this.enemies, now, hit);
+  }
+}
