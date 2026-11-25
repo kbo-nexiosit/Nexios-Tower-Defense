@@ -6,6 +6,7 @@ import { makeMazeGround, makeVignette, makeGlow } from '../art/environment.js';
 import { spawnEnemy, stepEnemy, removeEnemy, enemyReward, enemyLeak, enemyCells } from '../entities/Enemy.js';
 import { placeBlock as placeBlockEntity, refreshBlock, stepTower, upgradeTowerStats } from '../entities/Tower.js';
 import { spawnVan, stepVan } from '../entities/PizzaVan.js';
+import { BEHAVIOUR } from '../entities/bosses.js';
 import { crossedThresholds } from '../logic/boss.js';
 import { createSword } from '../logic/sword.js';
 import { rollFlip, flipModifiers } from '../logic/flip.js';
@@ -204,7 +205,7 @@ export default class GameScene extends Phaser.Scene {
       // Scene time pauses while the tab is hidden, so no burst on return.
       this.time.delayedCall(s.atMs, () => {
         if (this.over || this.bossDefeated) { this.pendingSpawns--; return; }
-        const e = spawnEnemy(this, s.type, s.hpScale, this.spawnMods());
+        const e = spawnEnemy(this, s.type, s.hpScale, this.spawnMods(), s.type === 'boss' ? bossFor(this.level).key : null);
         if (e.type === 'boss') this.bossEntrance(e);
         this.enemies.push(e);
         this.pendingSpawns--;
@@ -304,8 +305,9 @@ export default class GameScene extends Phaser.Scene {
     this.game.events.emit('bossHp', e.hp, e.maxHp);
   }
 
-  bossPhase() {
+  bossPhase(th, e) {
     this.events.emit('bossPhase');
+    if (e?.alive) BEHAVIOUR[e.bossKey]?.onPhase?.(this, e, th);
     sfx.boss();
     this.cameras.main.shake(500, 0.01);
     this.cameras.main.flash(300, 160, 0, 30);
@@ -398,7 +400,32 @@ export default class GameScene extends Phaser.Scene {
     this.add.text(MEDIA.x + MEDIA.w / 2, MEDIA.y + 14, 'DPG MEDIA', { fontFamily: PIXEL_FONT, fontSize: '11px', color: '#e8e8f0' }).setOrigin(0.5).setDepth(3);
     const logo = this.add.image(OFFICE.x + OFFICE.w / 2, OFFICE.y - 14, 'logo').setDepth(3);
     logo.setScale(Math.min(150 / logo.width, 26 / logo.height));
+    this.setupBart();
     this.officeFlash = this.add.rectangle(OFFICE.x + OFFICE.w / 2, OFFICE.y + OFFICE.h / 2, OFFICE.w, OFFICE.h, 0xff0000, 0).setDepth(3);
+  }
+
+  // Bart, the friendly guy on the NexiosIT roof: waves hello, rings the bell, cheers, despairs.
+  setupBart() {
+    const x = OFFICE.x + OFFICE.w - 22, y = OFFICE.y - 44;
+    this.roofBell = this.add.image(x - 34, y + 8, 'bell').setScale(0.55).setDepth(3.3).setOrigin(0.5, 0.1);
+    this.bart = this.add.sprite(x, y, 'bart', 0).setDepth(3.4);
+    this.bartY = y;
+    const arms = (times, gap = 220) => { for (let i = 0; i < times * 2; i++) this.time.delayedCall(i * gap, () => this.bart.active && this.bart.setFrame(i % 2 ? 0 : 1)); };
+    arms(4);                                                                  // hello!
+    this.events.on('waveCleared', () => {
+      this.tweens.add({ targets: this.roofBell, angle: { from: -30, to: 30 }, duration: 160, yoyo: true, repeat: 3, onComplete: () => this.roofBell.setAngle(0) });
+      arms(2, 260);
+    });
+    this.events.on('bossBeaten', () => {
+      this.bart.setFrame(1);
+      this.tweens.add({ targets: this.bart, y: this.bartY - 14, duration: 160, yoyo: true, repeat: 3, onComplete: () => this.bart.setFrame(0) });
+    });
+  }
+
+  bartDespair() {
+    if (!this.bart?.active) return;
+    this.bart.setTint(0x8aa8ff).setFrame(0);
+    this.tweens.add({ targets: this.bart, x: this.bart.x + 2, duration: 50, yoyo: true, repeat: 3, onComplete: () => this.bart.clearTint() });
   }
 
   // The monsters' current route, worn into the grass as a dirt trail.
@@ -544,6 +571,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   hit(target, damage) {
+    if (target.untargetable) return;   // offline Cloud / shielded BSOD
     const prevHp = target.hp;
     target.flashUntil = this.now + 70;
     const { killed } = applyDamage(target, damage, this.now);
@@ -553,7 +581,7 @@ export default class GameScene extends Phaser.Scene {
   // Shared bookkeeping after any damage: boss phases, rewards, removal.
   afterDamage(target, prevHp, killed) {
     if (target.type === 'boss') {
-      crossedThresholds(prevHp, target.hp, target.maxHp).forEach(() => this.bossPhase());
+      crossedThresholds(prevHp, target.hp, target.maxHp).forEach(th => this.bossPhase(th, target));
       this.game.events.emit('bossHp', Math.max(0, target.hp), target.maxHp);
       if (killed) { this.bossDefeat(target); removeEnemy(target); return; }
     }
@@ -594,6 +622,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   leak(e) {
+    this.bartDespair();
     this.health = Math.max(0, this.health - enemyLeak(e));
     this.leaksThisWave++;
     removeEnemy(e);
@@ -621,13 +650,15 @@ export default class GameScene extends Phaser.Scene {
     for (const van of this.vans) {
       for (const e of stepVan(this, van, dt, this.enemies)) {
         const prevHp = e.hp;
+        if (e.untargetable) continue;
         const { killed } = sauce(e, now);
         sfx.splat();
         this.afterDamage(e, prevHp, killed);
       }
     }
     this.vans = this.vans.filter(v => !v.done);
-    for (const e of this.enemies) {
+    for (const e of [...this.enemies]) {
+      if (e.alive && e.bossKey) { e.age += dt; BEHAVIOUR[e.bossKey]?.update?.(this, e, dt); }
       if (e.alive && stepEnemy(this, e, dt, now)) this.leak(e);
     }
     this.enemies = this.enemies.filter(e => e.alive);

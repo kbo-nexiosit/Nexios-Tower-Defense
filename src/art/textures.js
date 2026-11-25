@@ -25,6 +25,8 @@ export function makeTextures(scene) {
   pixTexture(scene, 'brute', S.bruteFrames());
   pixTexture(scene, 'swarm', S.swarmFrames());
   pixTexture(scene, 'boss', S.bossFrames(), 3);
+  pixTexture(scene, 'bart', S.friendlyBartFrames(), 2);
+  Object.keys(S.BOSS_ART).forEach(k => pixTexture(scene, 'boss-' + k, S.bossArtFrames(k), 2));
   pixTexture(scene, 'van', [S.van()]);
   pixTexture(scene, 'bell', [S.bell()]);
   pixTexture(scene, 'sword', [S.sword()]);
@@ -44,7 +46,7 @@ export function makeTextures(scene) {
 
   const anims = scene.anims;
   if (!anims.exists('rift-shimmer')) anims.create({ key: 'rift-shimmer', frames: [0, 1, 2].map(frame => ({ key: 'rift', frame })), frameRate: 7, repeat: -1 });
-  [['crawler', 8], ['brute', 4], ['swarm', 10], ['boss', 2]].forEach(([key, rate]) => {
+  [['crawler', 8], ['brute', 4], ['swarm', 10], ['boss', 2], ...Object.keys(S.BOSS_ART).map(k => ['boss-' + k, 3])].forEach(([key, rate]) => {
     if (!anims.exists(key + '-walk')) anims.create({ key: key + '-walk', frames: [{ key, frame: 0 }, { key, frame: 1 }], frameRate: rate, repeat: -1 });
   });
 }

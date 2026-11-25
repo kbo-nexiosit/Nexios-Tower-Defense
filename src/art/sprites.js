@@ -314,3 +314,47 @@ export function heart() {
   p.set(2, 2, '#ff9aa4').set(3, 2, '#ff9aa4').set(2, 3, '#ff9aa4');
   return p.outline();
 }
+
+// --- Friendly Bart on the NexiosIT roof (no name anywhere) --------------------
+// Dark hair, glasses, broad build, white Nexios shirt, big smile. Frame 1 = arms up.
+export function friendlyBartFrames() {
+  return [0, 1].map(f => {
+    const p = new Pix(22, 30);
+    const shirt = '#eef0f4', trousers = '#2a2f45', skin = '#e0b494';
+    p.rect(7, 22, 3, 7, trousers).rect(12, 22, 3, 7, trousers);                 // legs
+    p.rect(6, 29, 4, 1, '#1a1a1a').rect(12, 29, 4, 1, '#1a1a1a');              // shoes
+    p.ellipse(11, 17, 7, 6.5, shirt);                                           // broad torso
+    p.rect(10, 13, 2, 9, '#c8ccd6');                                            // shirt placket
+    p.rect(8, 15, 3, 1, '#3d6fd8');                                             // little blue Nexios mark
+    if (f === 0) { p.rect(2, 14, 3, 8, shirt).rect(17, 14, 3, 8, shirt); p.set(3, 22, skin).set(18, 22, skin); }
+    else { p.line(4, 13, 1, 5, shirt).line(5, 13, 2, 5, shirt).line(17, 13, 20, 5, shirt).line(18, 13, 21, 5, shirt); p.set(1, 4, skin).set(21, 4, skin); }
+    p.ellipse(11, 7, 5, 5.5, skin);                                             // head
+    p.ellipse(11, 3.5, 5.4, 3, '#1c1414').rect(6, 3, 10, 2, '#1c1414');        // dark hair
+    p.rect(7, 6, 3, 2, '#111').rect(12, 6, 3, 2, '#111').set(10, 6, '#111');    // glasses
+    p.set(8, 6, '#8ac8ff').set(13, 6, '#8ac8ff');
+    p.line(8, 10, 13, 10, '#8a3a2a').set(7, 9, '#8a3a2a').set(14, 9, '#8a3a2a'); // smile
+    return p.shade(1.08, 0.8).outline();
+  });
+}
+
+// --- The eight IT-parody bosses (2 frames each, faces right) ------------------
+function suit(p, col, f, { tie = '#c8231e', skin = '#d8b0a0' } = {}) {
+  const step = f ? 1 : -1;
+  p.rect(10 + step, 28, 4, 9, '#1c1e28').rect(17 - step, 28, 4, 9, '#1c1e28');
+  p.ellipse(15, 21, 9, 9, col);
+  p.rect(14, 14, 3, 13, '#f0f0f0').rect(15, 15, 1, 10, tie);
+  p.rect(4, 15, 3, 11, col).rect(24, 15, 3, 11, col);
+  p.ellipse(15.5, 8, 5.5, 6, skin);
+  return p;
+}
+export const BOSS_ART = {
+  itPartner: f => { const p = suit(new Pix(32, 38), '#3a3f55', f); p.ellipse(15.5, 4, 5.5, 2.5, '#8a8a8a'); p.rect(12, 7, 3, 1, '#111').rect(17, 7, 3, 1, '#111'); p.ellipse(27, 22, 3, 3, '#e8e8e8').set(27, 21, '#111').set(28, 22, '#111'); p.line(12, 11, 19, 11, '#5a2a2a'); return p.shade(1.1, 0.75).outline(); },
+  agileFirm: f => { const p = suit(new Pix(32, 38), '#5a5f6a', f, { tie: '#5a5f6a' }); p.ellipse(15.5, 5, 6, 4, '#2a2a3a'); [[9, 17, '#ffe14a'], [19, 19, '#ff9ad0'], [12, 24, '#8af0a0'], [21, 25, '#8ad0ff'], [8, 22, '#ffb84a']].forEach(([x, y, c]) => p.rect(x, y, 3, 3, c)); p.set(13, 8, '#111').set(18, 8, '#111'); p.line(14, 11, 17, 11, '#5a2a2a'); p.line(25, 15, 28, 13, '#c0c0c0'); return p.shade(1.1, 0.75).outline(); },
+  serviceBus: f => { const p = new Pix(40, 28); p.rect(1, 4, 38, 18, '#e8b830'); p.rect(1, 12, 38, 2, '#1a1a1a'); for (let x = 4; x < 30; x += 7) p.rect(x, 6, 5, 5, '#6ab0e0'); p.rect(31, 6, 7, 8, '#8cd0ff'); p.ellipse(9, 23, 3.5, 3.5, '#1a1a1a').ellipse(31, 23, 3.5, 3.5, '#1a1a1a'); p.set(9, f ? 22 : 24, '#888').set(31, f ? 24 : 22, '#888'); p.rect(32, 1, 6, 3, '#1a2a5a').rect(31, 3, 8, 1, '#111'); p.set(38, 18, '#fff6a0'); return p.shade(1.08, 0.75).outline(); },
+  javaOverlord: f => { const p = new Pix(32, 38); p.rect(5, 12, 20, 22, '#f2ece0'); p.rect(5, 12, 20, 4, '#6b3a1e'); p.ellipse(27, 22, 4, 5, '#f2ece0').ellipse(27, 22, 2, 3, null); p.rect(5, 34, 20, 2, '#c8c0b0'); p.set(11, 22, '#111').set(19, 22, '#111').line(12, 27, 18, 27, '#5a2a2a'); [[9, 1], [15, 0], [21, 2]].forEach(([x, y], i) => p.line(x + (f && i % 2 ? 1 : 0), y + 8, x, y, '#d8d8e8')); p.rect(8, 9, 14, 3, '#d9a436').set(10, 8, '#d9a436').set(15, 7, '#d9a436').set(20, 8, '#d9a436'); return p.shade(1.08, 0.75).outline(); },
+  sirDotNet: f => { const p = new Pix(32, 38); const step = f ? 1 : -1; p.rect(10 + step, 28, 4, 9, '#7a8494').rect(17 - step, 28, 4, 9, '#7a8494'); p.ellipse(15, 20, 9, 9, '#a8b4c4'); p.rect(4, 14, 3, 12, '#a8b4c4').rect(24, 14, 3, 12, '#a8b4c4'); p.ellipse(15.5, 8, 6, 6.5, '#a8b4c4'); p.rect(11, 7, 9, 2, '#1a1a2a'); p.rect(14, 1, 3, 3, '#5a2ad0'); p.rect(12, 18, 7, 5, '#5a2ad0'); p.rect(14, 19, 3, 3, '#ffffff'); for (let i = 0; i < 4; i++) p.line(26 + i, 10, 30, 26 - i * 2, '#c8b080'); return p.shade(1.1, 0.72).outline(); },
+  cloudConsultant: f => { const p = new Pix(36, 32); p.ellipse(18, 14, 14, 9, '#e8eef8').ellipse(9, 16, 7, 6, '#e8eef8').ellipse(27, 16, 7, 6, '#e8eef8').ellipse(18, 8, 8, 6, '#ffffff'); p.set(14, 14, '#111').set(22, 14, '#111').line(15, 18, 21, 18, '#5a6a8a'); p.rect(17, 20, 2, 7, '#3d6fd8'); [[10, 24], [26, 24]].forEach(([x, y]) => p.line(x, y, x + (f ? 1 : -1), y + 6, '#4a4e5a')); return p.shade(1.05, 0.82).outline(); },
+  bsodPreventer: f => { const p = new Pix(32, 38); const step = f ? 1 : -1; p.rect(10 + step, 30, 4, 7, '#2a2a3a').rect(18 - step, 30, 4, 7, '#2a2a3a'); p.rect(4, 4, 24, 20, '#2a2a3a'); p.rect(6, 6, 20, 16, '#1e4ad8'); p.set(10, 10, '#fff').set(10, 12, '#fff').line(13, 11, 22, 11, '#fff').line(9, 16, 22, 16, '#c8d8ff').line(9, 18, 18, 18, '#c8d8ff'); p.rect(14, 24, 4, 3, '#2a2a3a').rect(10, 27, 12, 3, '#2a2a3a'); p.ellipse(3, 20, 3, 6, '#4a8aff'); return p.shade(1.08, 0.75).outline(); },
+  big5: f => { const p = new Pix(36, 40); [[8, 26], [28, 26], [18, 24], [11, 12], [25, 12]].forEach(([x, y], i) => { p.ellipse(x, y + 6, 5, 6, '#5a5e6a'); p.rect(x - 1, y + 2, 2, 7, '#f0f0f0'); p.ellipse(x, y - 1, 3.5, 4, '#d8b0a0'); p.set(x - 1, y - 1, '#111').set(x + 1, y - 1, '#111'); if (f && i % 2) p.set(x, y + 1, '#5a2a2a'); }); return p.shade(1.08, 0.75).outline(); },
+};
+export const bossArtFrames = key => [0, 1].map(f => BOSS_ART[key](f));
