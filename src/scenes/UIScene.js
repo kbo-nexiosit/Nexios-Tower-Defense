@@ -25,6 +25,7 @@ export default class UIScene extends Phaser.Scene {
     on('health', n => this.healthText.setText(`Office: ${n}/${CONFIG.baseHealth}`));
     on('wave', w => this.waveText.setText(`Wave ${w}/${CONFIG.waves.count}`));
     this.tokens = 0;
+    this.scene.get('Game').emitAll();   // UI starts a frame after Game; pull current values
   }
 
   makeTowerButton(info, x) {
