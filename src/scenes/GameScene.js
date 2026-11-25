@@ -29,6 +29,7 @@ export default class GameScene extends Phaser.Scene {
     this.enemies = [];
     this.towers = [];
     this.over = false;
+    this.now = 0;
     this.sfx = sfx;
     this.wave = 0;
     this.waveActive = false;
@@ -190,7 +191,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   hit(target, damage) {
-    const { killed } = applyDamage(target, damage, this.time.now);
+    const { killed } = applyDamage(target, damage, this.now);
     if (!killed) return;
     this.wallet.earn(enemyReward(target));
     this.game.events.emit('tokens', this.wallet.tokens);
@@ -226,7 +227,8 @@ export default class GameScene extends Phaser.Scene {
   update(time, delta) {
     if (this.over) return;
     const dt = Math.min(delta, 50);
-    const now = this.time.now;
+    this.now += dt;   // game clock: only advances with frames, never jumps
+    const now = this.now;
     for (const e of this.enemies) {
       if (e.alive && stepEnemy(this, e, dt, now)) this.leak(e);
     }
