@@ -7,7 +7,7 @@ import { spawnEnemy, stepEnemy, removeEnemy, enemyReward, enemyLeak } from '../e
 import { placeTower, stepTower, upgradeTowerStats } from '../entities/Tower.js';
 import { upgradeCost } from '../logic/combat.js';
 import { crossedThresholds } from '../logic/boss.js';
-import { waveSchedule } from '../logic/waves.js';
+import { waveSchedule, clearBonus } from '../logic/waves.js';
 import * as sfx from '../audio/sfx.js';
 
 export const HUD_H = 56;
@@ -88,7 +88,10 @@ export default class GameScene extends Phaser.Scene {
     this.events.emit('waveCleared', info);
     this.game.events.emit('waveCleared', info);
     sfx.bell();
-    this.banner('WAVE CLEARED', '#ffc94a');
+    const bonus = clearBonus(this.wave);
+    this.wallet.earn(bonus);
+    this.game.events.emit('tokens', this.wallet.tokens);
+    this.banner('WAVE CLEARED', '#ffc94a', `+${bonus} tokens`);
     if (this.wave >= CONFIG.waves.count) { this.endGame(true); return; }
     this.game.events.emit('waveState', false);
   }

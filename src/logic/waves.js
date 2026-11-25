@@ -30,3 +30,8 @@ export function waveSchedule(n) {
   }
   return interleave(counts(n)).map((type, i) => ({ type, atMs: i * gapMs, hpScale }));
 }
+
+// Tokens paid out when the victory bell rings for a cleared wave.
+export function clearBonus(n) {
+  return CONFIG.waves.clearBonusBase + CONFIG.waves.clearBonusPerWave * n;
+}
