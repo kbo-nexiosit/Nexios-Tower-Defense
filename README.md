@@ -98,3 +98,7 @@ To rebalance the game, edit `src/config.js`. Tower costs, enemy stats, wave size
 ## Deployment
 
 The site is served by GitHub Pages straight from the repository's files. There's no build or workflow, and `.nojekyll` makes Pages serve them exactly as they are. Pages publishes the root of the `game` branch, so pushing to `game` updates the live game.
+
+## Classic version
+
+The original winding-road version is kept at `/classic/` (https://kbo-nexiosit.github.io/Nexios-Tower-Defense/classic/) and tagged `classic-road`.

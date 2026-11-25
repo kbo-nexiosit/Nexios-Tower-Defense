@@ -11,3 +11,4 @@ Things that worked, then broke, and why. Bootcamp Day 5, 2026-11-25.
 - First art pass was code-drawn circles and blocks — "immature". Fix: small pixel engine (low-res drawing + auto outline/shading, nearest-neighbour upscale), pre-rendered pixel town, animated monsters, pixel fonts.
 - Title flashlight beams pointed back at the kids (triangle origin quirk). Fix: define the tip at the left edge.
 - The low Upside Down drone was the shared background hum, only turned down on flip-back, so it seemed to hang. Fix: separate Upside Down drone that fades to silence and stops; normal world now has its own (original) synth music.
+- Maze rework: first balance sim lost on wave 4 — with only a few blocks the open-field route is short. Fix: start with 160 tokens (sim: good build wins 11/20).
