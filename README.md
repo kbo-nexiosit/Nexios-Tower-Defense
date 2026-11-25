@@ -64,7 +64,7 @@ Monsters get 12% more health every wave.
 
 ## Run it locally
 
-There's no build step. The game is plain ES modules, and Phaser 3.90.0 loads from cdnjs.
+There's no build step. The game is plain ES modules. Phaser 3.90.0 loads from cdnjs, and if that fails (no internet, for example) it falls back to the copy in `vendor/phaser.min.js`.
 
 ```bash
 node serve.mjs
