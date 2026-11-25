@@ -14,10 +14,10 @@ const CONFIG = {
     psychic:   { cost: 80, range: 160, damage: 45, fireMs: 1800 },
     lights:    { cost: 60, range: 80,  damage: 3,  stunMs: 600,  pulseMs: 3000 },
   },
-  // Kids level up from Lv1 (bought) to Lv10. Each level: +35% of starting damage, +3% range,
+  // Kids level up from Lv1 (bought) to Lv10. Each level: +50% of starting damage, +3% range,
   // walkie slows 0.025 harder (floor 0.25), lights stun 8% longer.
-  // Upgrade Lv L -> L+1 costs (0.75 + 0.25 x L) x the kid's price.
-  upgrade: { maxLevel: 10, damagePerLevel: 0.35, rangePerLevel: 0.03, slowPerLevel: 0.025, minSlow: 0.25, stunPerLevel: 0.08, costBase: 0.75, costStep: 0.25 },
+  // Upgrade Lv L -> L+1 costs (0.5 + 0.25 x L) x the kid's price.
+  upgrade: { maxLevel: 10, damagePerLevel: 0.5, rangePerLevel: 0.03, slowPerLevel: 0.025, minSlow: 0.25, stunPerLevel: 0.08, costBase: 0.5, costStep: 0.25 },
   enemies: {
     crawler: { hp: 20, speed: 80,  reward: 4, leak: 1 },
     brute:   { hp: 90, speed: 42,  reward: 9, leak: 3 },

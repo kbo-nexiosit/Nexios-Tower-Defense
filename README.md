@@ -16,7 +16,7 @@ Monsters walk from the Rift on the left to the office door on the right, finding
 1. **Drop blocks.** You get random **Tetris blocks** (current and next are shown bottom-left). Rotate with **R**, right-click or the mouse wheel, then click to drop. Monsters walk around your blocks, so you're building the maze. A drop that would fully block the path, or land on a monster, is refused.
 2. **Pick a kid.** A dropped block waits for the kid who runs it: press **1-4** or click a kid in the HUD. The kid's price pays for the block; **Esc** cancels. There's no skipping blocks.
 3. **Edge squares fire.** Only a block's squares that touch open ground shoot. Squares boxed in by other blocks, houses or trees turn to stone walls.
-4. **Upgrade.** Click a block and press **U** (or the HUD button). Kids level up from Lv1 to **Lv10**; each level adds +35% of the starting damage (the walkie slows harder, the lights stun longer). Going up from Lv L costs (0.75 + 0.25 × L) × the kid's price.
+4. **Upgrade.** Click a block and press **U** (or the HUD button). Kids level up from Lv1 to **Lv10**; each level adds +50% of the starting damage (the walkie slows harder, the lights stun longer). Going up from Lv L costs (0.5 + 0.25 × L) × the kid's price.
 5. **Start the wave.** Press **SPACE**. Every monster you stop pays out **arcade tokens**. You start with 160.
 6. **Clear the wave.** The **Nexios victory bell** rings and you get bonus tokens (10 + 3 × the wave number).
 
