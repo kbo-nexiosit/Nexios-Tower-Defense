@@ -153,7 +153,16 @@ function drum(t, from, to, dur, vol) {
   o.connect(g).connect(music.bus); o.start(t); o.stop(t + dur + 0.02);
 }
 const kick = t => drum(t, 150, 45, 0.32, 0.55);
-const tom = (t, f) => { drum(t, f * 1.7, f, 0.38, 0.35); mNoise(t, 0.03, 0.08, 'bandpass', 2500); };
+// Warm, round snare: body tone + short filtered noise + soft tail (no hard gate, no fizz).
+function snare(t) {
+  drum(t, 240, 165, 0.16, 0.22);
+  const s = ctx.createBufferSource(); s.buffer = noiseBuf;
+  const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 700;
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(4200, t); lp.frequency.exponentialRampToValueAtTime(1600, t + 0.22);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.13, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
+  s.connect(hp).connect(lp).connect(g).connect(music.bus); s.start(t); s.stop(t + 0.26);
+}
+const tom = (t, f) => { drum(t, f * 1.7, f, 0.38, 0.35); mNoise(t, 0.02, 0.03, 'lowpass', 1800); };
 // Detuned, brassy synth stab across three voices.
 function brass(chord, t, dur, vol) {
   chord.forEach(n => [-9, 0, 9].forEach(d => mVoice(midi(n), t, dur, { vol, cutoff: 2600, endCut: 0.3, attack: 0.03, detune: d })));
@@ -164,10 +173,10 @@ function playStep(step, t) {
   const chord = CHORDS[Math.floor(bar / 2) % CHORDS.length];
   // Drums: heavy kick, big gated snare, rolling toms; a descending tom fill every 4th bar.
   if (s16 === 0 || s16 === 7 || s16 === 8) kick(t);
-  if (s16 === 4 || s16 === 12) { mNoise(t, 0.32, 0.26, 'bandpass', 1500, true); drum(t, 230, 170, 0.12, 0.12); }
+  if (s16 === 4 || s16 === 12) snare(t);
   if (bar % 4 === 3 && s16 >= 12) tom(t, [190, 150, 120, 95][s16 - 12]);
   else { if (s16 === 2 || s16 === 10) tom(t, 120); if (s16 === 14) tom(t, 95); }
-  if (s16 % 2 === 1) mNoise(t, 0.03, 0.035, 'highpass', 9000);
+  if (s16 % 2 === 1) mNoise(t, 0.025, 0.022, 'highpass', 7000);
   // Pulsing staccato bass (eighths, never sustained).
   if (s16 % 2 === 0) mVoice(midi(chord[0] - 12 + (s16 === 14 ? 12 : 0)), t, STEP * 0.9, { type: 'square', vol: 0.07, cutoff: 1400, endCut: 0.4 });
   // Brass stabs on a syncopated rhythm.
