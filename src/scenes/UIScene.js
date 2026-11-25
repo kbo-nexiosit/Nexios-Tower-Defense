@@ -40,6 +40,13 @@ export default class UIScene extends Phaser.Scene {
     this.bossBarBg = this.add.rectangle(640, 76, 604, 16, 0x000000, 0.8).setStrokeStyle(2, 0xff2a3a).setVisible(false);
     this.bossBar = this.add.rectangle(340, 76, 600, 12, 0xff2a3a).setOrigin(0, 0.5).setVisible(false);
 
+    // Nexios Sword button (also: S).
+    this.swordBtn = this.add.rectangle(968, 28, 130, 44, 0x10141c).setStrokeStyle(2, 0x3a3a55).setInteractive({ useHandCursor: true });
+    this.swordTxt = this.add.text(968, 28, '⚔ SWORD [S]', { ...FONT, fontSize: '14px', color: '#dfe6ee' }).setOrigin(0.5);
+    this.swordBtn.on('pointerdown', () => this.scene.get('Game').useSword());
+    this.swordGlow = this.tweens.add({ targets: this.swordBtn, alpha: 0.55, duration: 400, yoyo: true, repeat: -1, paused: true });
+    this.setSword(0);
+
     // Mute toggle.
     const mute = this.add.text(1246, 28, sfx.isMuted() ? '🔇' : '🔊', { fontSize: '22px' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     mute.on('pointerdown', () => { sfx.setMuted(!sfx.isMuted()); mute.setText(sfx.isMuted() ? '🔇' : '🔊'); });
@@ -54,6 +61,7 @@ export default class UIScene extends Phaser.Scene {
       this.bossBarBg.setVisible(show); this.bossBar.setVisible(show);
       this.bossBar.width = 600 * Math.max(0, hp / max);
     });
+    on('sword', n => this.setSword(n));
     on('towerSelected', t => { this.selectedTower = t; this.refreshUpgrade(); });
     on('waveState', active => {
       this.startBtn.setVisible(!active); this.startTxt.setVisible(!active);
@@ -69,6 +77,13 @@ export default class UIScene extends Phaser.Scene {
     const label = this.add.text(x - 12, 12, `${info.label}\n${cost} tok`, { ...FONT, fontSize: '12px' });
     bg.on('pointerdown', () => { this.registry.set('selected', info.type); this.refreshButtons(); });
     return { ...info, cost, bg, icon, label };
+  }
+
+  setSword(n) {
+    const ready = n > 0;
+    this.swordBtn.setStrokeStyle(2, ready ? 0xdfe6ee : 0x3a3a55).setFillStyle(ready ? 0x2a3550 : 0x10141c).setAlpha(1);
+    this.swordTxt.setAlpha(ready ? 1 : 0.35);
+    if (ready) this.swordGlow.resume(); else { this.swordGlow.pause(); this.swordBtn.setAlpha(1); }
   }
 
   refreshUpgrade() {

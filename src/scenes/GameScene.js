@@ -7,6 +7,7 @@ import { spawnEnemy, stepEnemy, removeEnemy, enemyReward, enemyLeak } from '../e
 import { placeTower, stepTower, upgradeTowerStats } from '../entities/Tower.js';
 import { upgradeCost } from '../logic/combat.js';
 import { crossedThresholds } from '../logic/boss.js';
+import { createSword } from '../logic/sword.js';
 import { waveSchedule, clearBonus } from '../logic/waves.js';
 import * as sfx from '../audio/sfx.js';
 
@@ -32,6 +33,7 @@ export default class GameScene extends Phaser.Scene {
     this.over = false;
     this.now = 0;
     this.bossDefeated = false;
+    this.sword = createSword();
     this.boss = null;
     this.sfx = sfx;
     this.wave = 0;
@@ -49,6 +51,7 @@ export default class GameScene extends Phaser.Scene {
 
     this.scene.launch('UI');
     this.input.keyboard.on('keydown-SPACE', () => this.startWave());
+    this.input.keyboard.on('keydown-S', () => this.useSword());
     if (new URLSearchParams(location.search).has('debug')) {
       // Debug: B jumps straight to the boss wave.
       this.input.keyboard.on('keydown-B', () => { if (!this.waveActive) { this.wave = CONFIG.waves.count - 1; this.wallet.earn(2000); this.emitAll(); this.startWave(); } });
@@ -92,8 +95,49 @@ export default class GameScene extends Phaser.Scene {
     this.wallet.earn(bonus);
     this.game.events.emit('tokens', this.wallet.tokens);
     this.banner('WAVE CLEARED', '#ffc94a', `+${bonus} tokens`);
+    if (this.sword.onWaveCleared(this.leaksThisWave)) {
+      this.game.events.emit('sword', this.sword.charges);
+      this.time.delayedCall(2300, () => {
+        if (this.over) return;
+        this.banner('PERFECT WAVE', '#dfe6ee', 'THE NEXIOS SWORD IS YOURS — press S', false);
+        this.swordSprite(640, 470, 1.4).setAlpha(0).setDepth(31);
+      });
+    }
     if (this.wave >= CONFIG.waves.count) { this.endGame(true); return; }
     this.game.events.emit('waveState', false);
+  }
+
+  // The GoT-style Nexios Sword with the Nexios wordmark etched on the blade.
+  swordSprite(x, y, scale) {
+    const blade = this.add.image(0, 0, 'sword');
+    const logo = this.add.image(40, 0, 'logo').setTint(0x1c2433);
+    logo.setScale(Math.min(110 / logo.width, 9 / logo.height));
+    const c = this.add.container(x, y, [blade, logo]).setScale(scale);
+    this.tweens.add({ targets: c, alpha: 1, duration: 300, hold: 1400, yoyo: true, onComplete: () => c.destroy() });
+    return c;
+  }
+
+  useSword() {
+    if (this.over || !this.sword.use()) return;
+    this.game.events.emit('sword', this.sword.charges);
+    sfx.sword();
+    const c = this.add.container(-400, 380, [this.add.image(0, 0, 'sword')]).setScale(3).setDepth(40).setAngle(-12);
+    const logo = this.add.image(40, 0, 'logo').setTint(0x1c2433);
+    logo.setScale(Math.min(110 / logo.width, 9 / logo.height));
+    c.add(logo);
+    this.tweens.add({ targets: c, x: 1700, angle: 12, duration: 600, ease: 'Cubic.easeIn', onComplete: () => c.destroy() });
+    const slash = this.add.rectangle(640, 380, 1280, 10, 0xffffff, 0.9).setDepth(39).setScale(0, 1);
+    this.tweens.add({ targets: slash, scaleX: 1, duration: 450, ease: 'Cubic.easeIn' });
+    this.tweens.add({ targets: slash, alpha: 0, scaleY: 8, delay: 450, duration: 400, onComplete: () => slash.destroy() });
+    this.time.delayedCall(420, () => {
+      this.cameras.main.flash(250, 255, 255, 255);
+      this.cameras.main.shake(300, 0.01);
+      for (const e of [...this.enemies]) {
+        if (!e.alive) continue;
+        if (e.type === 'boss') this.hit(e, CONFIG.sword.bossDamagePct * e.maxHp);
+        else this.hit(e, e.hp * 10 + 1);   // slices through like butter
+      }
+    });
   }
 
   bossEntrance(e) {
