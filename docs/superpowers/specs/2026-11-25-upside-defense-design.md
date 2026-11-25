@@ -32,8 +32,9 @@ Theme: inspired by *Stranger Things* — a dark 1980s small town at night, a mir
 ## Constraints
 
 - Browser only, opens from a link. Phaser 3 loaded from CDN (cdnjs, pinned exact version). No npm, no build step.
+- **Libraries:** Phaser **3.90.0** (the final, mature v3 release; Phaser 4.x exists but has fewer examples and less proven behaviour, so it isn't worth the risk today), loaded with one `<script>` tag from `https://cdnjs.cloudflare.com/ajax/libs/phaser/3.90.0/phaser.min.js`. Nothing else. Sound uses Phaser's built-in audio, and the bell and effects are synthesised with the browser's Web Audio API (no Howler). Placeholder art is drawn in code with Phaser Graphics, and pixel sprites are PNGs in `assets/`. No npm and no `package.json`.
 - Hosting: GitHub Pages from `kbo-nexiosit/Nexios-Tower-Defense`. **The repo is currently private and must be made public** for free Pages (owner's action; confirm before flipping).
-- Fallback demo: open locally from the laptop over HDMI (needs a local static server, e.g. `python3 -m http.server`, because ES modules don't load from `file://`).
+- Fallback demo: open locally from the laptop over HDMI (needs a local static server: a tiny dependency-free `serve.mjs` run with `node serve.mjs` (Node 20 is installed; Python is not), because ES modules don't load from `file://`).
 - Hard stops: be in the room at 12:00 and 14:30; lunch 12:45.
 
 ## Approaches considered
@@ -47,7 +48,8 @@ Owner picked A.
 ## The game (decided by owner unless marked *proposal*)
 
 ### World and look
-- Top-down 80s small town at night, one map, one winding road from the **Rift** (spawn) to the **base** (*proposal:* the school/lab, call it "Hawkins-ish" only by original name, e.g. "Maplewood Middle School").
+- Top-down 80s small town at night, one map, one winding road from the **Rift** (spawn) to the **base**.
+- **Base (owner):** the **NexiosIT office building**, four storeys tall with lots of glass, and the Nexios logo on the façade. Next to it stands the **DPG Media** building, a large media-company block that is only decoration.
 - *Proposal:* 80s pixel art (`pixelArt: true`), one dark palette with neon accents. Start with coloured shapes; swap in art (generated or kenney.nl) later.
 
 ### Economy
@@ -74,15 +76,16 @@ Owner picked A.
 - A bonus you **win**; when used, it slays through all enemies on screen "like butter" (GoT-style sword).
 - *Proposal:* earned by clearing a wave with zero leaks; one stored charge; player chooses when to use it. Against Bart it deals heavy damage but does not one-shot him.
 
-### Pizza Hut (owner: intertwined with the story)
-- *Proposal:* the kids are holed up for the night and ordered pizza. Between waves a Pizza Hut van can be called for tokens; delivering it restores base health or gives towers a short damage buff.
+### Pizza Hut (owner)
+- The kids are holed up for the night and ordered pizza (story flavour).
+- A **Pizza Hut van you buy** with tokens. It drives along the board (the road) and **sprays tomato sauce** over the enemies it passes, weakening them. *Builder:* deal damage and apply a "sauced" debuff (a slow, plus extra damage taken for a few seconds), with a cooldown or rising price.
 
 ### The Upside Down (owner)
 - A **penalty that strikes by chance**: the board flips and worse enemies reign for a while.
 - *Proposal:* chance rises each wave; a one-second flicker warning; lasts ~20–30 s; visual = colour drain to cold red/blue tint, drifting ash particles, board flip transition; enemies spawned during it are tougher/faster. Readability must survive the tint.
 
-### Bart — the supervillain (owner)
-- Bart, Nexios CEO, as a Vecna-like final boss; **very hard to kill**.
+### The supervillain (owner)
+- A Bart look-alike as a Vecna-like final boss, **very hard to kill**. **No name or title is shown on screen** (no "Bart", no "CEO"), so the likeness does the work.
 - *Proposal:* appears in the final wave; huge health bar; phases — at each health threshold he forces an Upside Down flip; sword hurts but doesn't finish him. Depiction stays good-natured and big-screen safe. **Owner to ask Bart before the demo.**
 
 ### Menus and sound
@@ -104,12 +107,11 @@ Each step leaves a playable game:
 - **Proposals above:** treated as accepted (owner didn't correct them in playback). Still, keep the sword, pizza, flip and Bart as separate systems that talk through events, so any one can be changed or cut cheaply.
 - **Repo history:** one commit (README). Nothing to scrub. Making it public is the owner's action, asked at the step-2 deploy.
 - **Scope cut line:** steps 1–5 are must-haves. Steps 6–8 are stretch goals, cut from the bottom if time runs short.
-- **Pizza Hut:** shown by name in text and dialogue only. The van is original pixel art with no Pizza Hut logo.
-- **Bart's look (owner):** an original pixel-art caricature, no photo. Dark hair, glasses, well built, drawn as a looming villain in Vecna style. His name and title ("Bart, CEO") sell the joke.
+- **Pizza Hut:** shown by name in the shop button and text. The van is original pixel art with no Pizza Hut logo.
+- **Bart's look (owner):** an original pixel-art caricature, no photo and no name label. Dark hair, glasses, well built, drawn as a looming villain in Vecna style.
 - **Nexios material (owner pointed to nexiosit.com):** use the white Nexios logo (`https://nexiosit.com/_ipx/_/images/nexios-white-transparant.webp`, saved into `assets/`) on the title screen, the victory screen, and the sword's hilt or pommel. Use the tagline "Your partner for software, cloud & AI solutions" for a joke line (e.g. the victory screen). The site shows no bell, sword or brand colours, so Claude makes a pixel bell, a synthesised bell sound and a pixel GoT-style sword. Neon accents stay in the game's own palette.
-- **Bart fallback:** Bart is a config-driven "skin" (name, title, sprite). If he says no, one change turns him into an original villain.
+- **Boss fallback:** the boss sprite is one swappable file, so an original villain can replace it if needed.
 
 ## Left to the builder
 - Exact numbers: costs, damage, ranges, health, wave composition, flip odds and duration.
 - File/module structure, asset sources (license-clean only), exact original names for kids/monsters/town.
-- Whether the base is the school or the lab.
