@@ -37,7 +37,7 @@ export default class TitleScene extends Phaser.Scene {
     const kids = ['slingshot', 'walkie', 'psychic'];
     kids.forEach((k, i) => {
       const x = 190 + i * 90, y = 628;
-      const beam = this.add.triangle(x + 20, y - 10, 0, 0, 260, -40, 260, 40, 0xfff2c4, 0.10).setOrigin(0, 0.5).setBlendMode(Phaser.BlendModes.ADD);
+      const beam = this.add.triangle(x + 14, y - 8, 0, 40, 300, 0, 300, 80, 0xfff2c4, 0.10).setOrigin(0, 0.5).setBlendMode(Phaser.BlendModes.ADD);
       this.tweens.add({ targets: beam, alpha: 0.04, duration: 900 + i * 200, yoyo: true, repeat: -1 });
       this.add.image(x, y, k).setScale(1.6);
     });
