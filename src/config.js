@@ -18,6 +18,8 @@ const CONFIG = {
   // walkie slows 0.025 harder (floor 0.25), lights stun 8% longer.
   // Upgrade Lv L -> L+1 costs (0.5 + 0.25 x L) x the kid's price.
   upgrade: { maxLevel: 10, damagePerLevel: 0.5, rangePerLevel: 0.03, slowPerLevel: 0.025, minSlow: 0.25, stunPerLevel: 0.08, costBase: 0.5, costStep: 0.25 },
+  // Selling a block (X) pays back this share of everything spent on it: the kid plus its upgrades.
+  sell: { refundPct: 0.6 },
   enemies: {
     crawler: { hp: 20, speed: 80,  reward: 4, leak: 1 },
     brute:   { hp: 90, speed: 42,  reward: 9, leak: 3 },

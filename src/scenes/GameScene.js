@@ -1,10 +1,10 @@
 import CONFIG from '../config.js';
 import { createWallet } from '../logic/economy.js';
-import { applyDamage, upgradeCost, sauce } from '../logic/combat.js';
+import { applyDamage, upgradeCost, sellValue, sauce } from '../logic/combat.js';
 import { makeTextures, PALETTE, PIXEL_FONT } from '../art/textures.js';
 import { makeMazeGround, makeVignette, makeGlow } from '../art/environment.js';
 import { spawnEnemy, stepEnemy, removeEnemy, enemyReward, enemyLeak, enemyCells } from '../entities/Enemy.js';
-import { placeBlock as placeBlockEntity, refreshBlock, stepTower, upgradeTowerStats } from '../entities/Tower.js';
+import { placeBlock as placeBlockEntity, removeBlock as removeBlockEntity, refreshBlock, stepTower, upgradeTowerStats } from '../entities/Tower.js';
 import { spawnVan, stepVan } from '../entities/PizzaVan.js';
 import { BEHAVIOUR } from '../entities/bosses.js';
 import { crossedThresholds } from '../logic/boss.js';
@@ -12,7 +12,7 @@ import { createSword } from '../logic/sword.js';
 import { rollFlip, flipModifiers } from '../logic/flip.js';
 import { waveSchedule, clearBonus } from '../logic/waves.js';
 import { bossFor, bossHp, levelWaves } from '../logic/run.js';
-import { createGrid, setObstacles, placeBlock as placeOnGrid, distanceField, canPlace, routeFrom, routeWith } from '../logic/grid.js';
+import { createGrid, setObstacles, placeBlock as placeOnGrid, removeBlock as removeFromGrid, distanceField, canPlace, routeFrom, routeWith } from '../logic/grid.js';
 import { SHAPES, createBag, cellsAt, rotate } from '../logic/tetromino.js';
 import * as sfx from '../audio/sfx.js';
 
@@ -80,6 +80,7 @@ export default class GameScene extends Phaser.Scene {
     this.input.keyboard.on('keydown', () => sfx.unlock());
     this.input.keyboard.on('keydown-R', () => this.rotatePiece());
     this.input.keyboard.on('keydown-U', () => this.upgradeSelected());
+    this.input.keyboard.on('keydown-X', () => this.sellSelected());
     this.input.keyboard.on('keydown-ESC', () => this.cancelPick());
     KIDS.forEach((k, i) => this.input.keyboard.on('keydown-' + ['ONE', 'TWO', 'THREE', 'FOUR'][i], () => this.chooseKid(k)));
 
@@ -607,6 +608,25 @@ export default class GameScene extends Phaser.Scene {
     this.selectTower(t);
     this.puff(t.x, t.y, 0xffc94a);
     this.float(t.x, t.y - 18, 'LEVEL UP', '#ffc94a');
+  }
+
+  // X: sell the selected block. Its squares open up again, so the monsters' route can only get
+  // shorter and nobody can be trapped; neighbours that were walled in start firing again.
+  sellSelected() {
+    const t = this.selected;
+    if (!t || this.over || this.picking) return;
+    const refund = sellValue(t.type, t.level);
+    this.selectTower(null);
+    removeFromGrid(this.grid, t.id);
+    this.towers = this.towers.filter(b => b !== t);
+    t.cells.forEach(c => { const p = this.cellCenter(c); this.burst(p.x, p.y, 0x9a8a68, 5, 0.5); });
+    removeBlockEntity(this, t);
+    this.recomputeMaze();
+    this.wallet.earn(refund);
+    this.game.events.emit('tokens', this.wallet.tokens);
+    this.float(t.x, t.y - 18, 'SOLD +' + refund, '#ffc94a');
+    sfx.sell();
+    if (this.lastPointer) this.updateGhost(this.lastPointer);
   }
 
   hit(target, damage) {

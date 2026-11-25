@@ -31,6 +31,14 @@ export function refreshBlock(scene, b) {
   b.pips.setPosition(spot.x, spot.y + 12);
 }
 
+// A sold block: its crates and kid leave the board. Anything still pointing at it (a boss's net,
+// a shot in flight) sees `sold` and leaves it alone.
+export function removeBlock(scene, b) {
+  b.sold = true;
+  b.net?.destroy();
+  [...b.shadows, ...b.tiles, b.kid, b.pips].forEach(o => { scene.tweens.killTweensOf(o); o.destroy(); });
+}
+
 export function upgradeTowerStats(t) {
   t.level++;
   Object.assign(t, towerStats(t.type, t.level));

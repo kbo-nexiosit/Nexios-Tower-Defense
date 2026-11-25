@@ -17,8 +17,9 @@ Monsters walk from the Rift on the left to the office door on the right, finding
 2. **Pick a kid.** A dropped block waits for the kid who runs it: press **1-4** or click a kid in the HUD. The kid's price pays for the block; **Esc** cancels. There's no skipping blocks.
 3. **Edge squares fire.** Only a block's squares that touch open ground shoot. Squares boxed in by other blocks, houses or trees turn to stone walls.
 4. **Upgrade.** Click a block and press **U** (or the HUD button). Kids level up from Lv1 to **Lv10**; each level adds +50% of the starting damage (the walkie slows harder, the lights stun longer). Going up from Lv L costs (0.5 + 0.25 × L) × the kid's price.
-5. **Start the wave.** Press **SPACE**. Every monster you stop pays out **arcade tokens**. You start with 160.
-6. **Clear the wave.** The **Nexios victory bell** rings and you get bonus tokens (10 + 3 × the wave number).
+5. **Sell.** Changed your mind? Click a block and press **X** (or the HUD button) to sell it for **60%** of everything you spent on it, upgrades included. Its squares open up again, and neighbours that were walled in start firing again.
+6. **Start the wave.** Press **SPACE**. Every monster you stop pays out **arcade tokens**. You start with 160.
+7. **Clear the wave.** The **Nexios victory bell** rings and you get bonus tokens (10 + 3 × the wave number).
 
 ### Controls
 
@@ -29,6 +30,7 @@ Monsters walk from the Rift on the left to the office door on the right, finding
 | **1-4** | Pick the kid for a dropped block |
 | **Esc** | Cancel a drop |
 | **U** | Upgrade the selected block's kid |
+| **X** | Sell the selected block (60% back) |
 | **SPACE** | Start the next wave |
 | **S** | Swing the **Nexios Sword** (if you've earned it) |
 | **P** | Call the **Pizza Hut** van (50 tokens, 20 s cooldown) |

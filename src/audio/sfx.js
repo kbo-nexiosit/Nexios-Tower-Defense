@@ -69,6 +69,8 @@ export function shot() {
 
 export function zap() { if (ready()) tone(1400, { type: 'sawtooth', dur: 0.35, vol: 0.08, to: 120 }); }
 export function pulse() { if (ready()) tone(220, { type: 'triangle', dur: 0.25, vol: 0.06, to: 440 }); }
+// Selling a block: tokens dropping back into the tray.
+export function sell() { if (ready()) [988, 1319, 1760].forEach((f, i) => tone(f, { type: 'square', dur: 0.09, vol: 0.05, at: i * 0.06 })); }
 export function splat() { if (ready()) noise({ dur: 0.25, vol: 0.25, from: 1200, to: 150 }); }
 
 export function flip() {

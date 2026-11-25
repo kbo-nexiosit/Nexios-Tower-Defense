@@ -40,7 +40,7 @@ export default class TitleScene extends Phaser.Scene {
     this.add.text(cx, 345, 'Defend the NexiosIT office. Every level brings more waves and a new boss.',
       { fontFamily: '"VT323", monospace', fontSize: '27px', color: '#e8e8f0' }).setOrigin(0.5);
     this.add.text(cx, 430,
-      'Drop Tetris blocks to build a maze  •  Pick a kid for every block  •  Ring the bell\nOnly edge squares fire  •  No leaks = the Nexios Sword  •  Beware the Upside Down\n\nR rotate   •   1-4 pick kid   •   U upgrade (Lv10 max)   •   SPACE wave   •   S sword   •   P pizza   •   M music',
+      'Drop Tetris blocks to build a maze  •  Pick a kid for every block  •  Ring the bell\nOnly edge squares fire  •  No leaks = the Nexios Sword  •  Beware the Upside Down\n\nR rotate   •   1-4 pick kid   •   U upgrade (Lv10 max)   •   X sell   •   SPACE wave   •   S sword   •   P pizza   •   M music',
       { fontFamily: '"VT323", monospace', fontSize: '20px', color: '#9aa0b8', align: 'center', lineSpacing: 8 }).setOrigin(0.5);
     // A little standoff: the kids with flashlights facing monsters by the Rift.
     const kids = ['slingshot', 'walkie', 'psychic'];

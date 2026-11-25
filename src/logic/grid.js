@@ -11,6 +11,14 @@ const DIRS = [[1, 0], [0, -1], [0, 1], [-1, 0]];
 export function setObstacles(g, cells) { cells.forEach(([c, r]) => { if (inGrid(g, c, r)) g.cells[idx(g, c, r)] = -1; }); }
 export function placeBlock(g, cells, id) { cells.forEach(([c, r]) => { g.cells[idx(g, c, r)] = id; }); }
 
+// Open up every square of the block with this id (a sold block). Returns how many squares were freed.
+export function removeBlock(g, id) {
+  if (!(id > 0)) return 0;
+  let n = 0;
+  for (let i = 0; i < g.cells.length; i++) if (g.cells[i] === id) { g.cells[i] = 0; n++; }
+  return n;
+}
+
 // Steps to the goal from every open cell (-1 = no route). BFS over open cells.
 export function distanceField(g, [gc, gr]) {
   const d = new Int32Array(g.cols * g.rows).fill(-1);

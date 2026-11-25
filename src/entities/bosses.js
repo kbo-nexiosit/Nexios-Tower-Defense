@@ -55,12 +55,17 @@ export const BEHAVIOUR = {
       const b = scene.towers.reduce((a, t) => (Math.hypot(t.x - e.x, t.y - e.y) < Math.hypot(a.x - e.x, a.y - e.y) ? t : a));
       b.jammedUntil = scene.now + 3000;
       b.tiles.forEach(t => t.setTint(0x777777));
-      const net = scene.add.graphics().setDepth(4.5);
+      b.net?.destroy();
+      const net = b.net = scene.add.graphics().setDepth(4.5);
       net.lineStyle(2, 0xc8b080, 0.9);
       b.cells.forEach(c => { const p = scene.cellCenter(c); for (let k = -16; k <= 16; k += 8) { net.lineBetween(p.x - 16, p.y + k, p.x + 16, p.y + k); net.lineBetween(p.x + k, p.y - 16, p.x + k, p.y + 16); } });
       const line = scene.add.graphics().setDepth(4.5).lineStyle(2, 0xc8b080, 0.8).lineBetween(e.x, e.y, b.x, b.y);
       scene.tweens.add({ targets: line, alpha: 0, duration: 400, onComplete: () => line.destroy() });
-      scene.time.delayedCall(3000, () => { net.destroy(); b.tiles.forEach(t => t.clearTint()); });
+      scene.time.delayedCall(3000, () => {
+        net.destroy();
+        if (b.sold || b.net !== net) return;   // sold meanwhile, or netted again
+        b.net = null; b.tiles.forEach(t => t.clearTint());
+      });
     },
   },
   // Goes "offline" 2 s out of every 6: can't be targeted or hurt.

@@ -49,6 +49,13 @@ An 80s small town at night, inspired by *Stranger Things* but with no names, cha
 - **Tuning history:** the first try (+35% damage, 0.75 + 0.25 × L) lost on wave 6 in simulation and was retuned.
 - **The boss resists:** it can't be stunned and is slowed no lower than 75% speed, so the lights can't lock it in place.
 
+**Selling (added on the `new-colleague` branch; Claude's call, not yet reviewed by the owner):**
+- Click a block and press **X** (or the green HUD button, which shows the refund). The block and its kid leave the board.
+- **Refund:** 60% of everything spent on the block — the kid's price plus every upgrade — rounded down (`CONFIG.sell.refundPct`).
+- **Why it exists:** the maze carries over for the whole endless run, so one misplaced block used to be permanent.
+- **Why 60%, and allowed mid-wave:** removing a block only opens squares, so the route can only get shorter and no monster can be trapped — no path check is needed. The 40% loss is what stops free walls and "juggling" (drop a block to force a detour, sell it, repeat).
+- **After a sale:** the route is recomputed, and neighbouring squares that were walled in fire again. A block netted by Sir .Net can be sold; the net goes with it.
+
 ### 2.4 Monsters
 | Type | HP | Speed | Reward | Leak damage | Notes |
 |---|---|---|---|---|---|
@@ -151,6 +158,7 @@ From level 9 the bosses repeat, 50% tougher per lap. Bosses that can't be hit at
 | 1–4 or HUD kid | Choose the kid for a dropped block |
 | Esc | Cancel a drop |
 | U | Upgrade the selected block |
+| X | Sell the selected block (60% back) |
 | SPACE | Start the next wave or boss |
 | S | Nexios Sword |
 | P | Pizza Hut van |
@@ -185,7 +193,7 @@ URL flags: `?debug` exposes `window.__game` and makes **B** jump to the current 
   - `src/scenes/`: Title, Game, UI (HUD), End.
   - `src/art/`: the pixel engine and sprites.
   - `src/audio/sfx.js`: audio.
-- **Tests:** `node --test tests/`, 98 passing at the time of writing.
+- **Tests:** `node --test tests/`, 114 passing at the time of writing.
 - **Balance testing method:** load `?debug`, sleep the Phaser loop (`game.loop.sleep()`), then step it frame by frame (`game.step(t, 16.667)`) from the browser console to fast-forward whole games with a scripted build. The test browser runs at about 1 fps, so real-time play can't be judged there. Phaser tweens run on wall-clock time, so these simulations slightly under-count slingshot damage.
 - **`REGRET.md`:** a log of what broke and how it was fixed, for the retro.
 

@@ -65,6 +65,16 @@ export function upgradeCost(type, level) {
   return Math.round(CONFIG.towers[type].cost * (U.costBase + U.costStep * (level + 1)));
 }
 
+// Everything paid for a kid so far: its price plus each upgrade up to this (0-based) level.
+export function totalSpent(type, level) {
+  let sum = CONFIG.towers[type].cost;
+  for (let l = 0; l < level; l++) sum += upgradeCost(type, l);
+  return sum;
+}
+
+// Tokens handed back when the block is sold.
+export const sellValue = (type, level) => Math.floor(totalSpent(type, level) * CONFIG.sell.refundPct);
+
 export function applySlow(e, factor, ms, now) {
   const active = now < e.slowUntil;
   e.slowFactor = active ? Math.min(e.slowFactor, factor) : factor;

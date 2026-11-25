@@ -1,7 +1,7 @@
 import CONFIG from '../config.js';
 import { HUD_H } from './GameScene.js';
 import * as sfx from '../audio/sfx.js';
-import { upgradeCost } from '../logic/combat.js';
+import { upgradeCost, sellValue } from '../logic/combat.js';
 import { SHAPES, rotate } from '../logic/tetromino.js';
 
 const FONT = { fontFamily: '"VT323", monospace', fontSize: '22px', color: '#e8e8f0' };
@@ -40,23 +40,27 @@ export default class UIScene extends Phaser.Scene {
     this.tweens.add({ targets: this.startTxt, alpha: 0.5, duration: 500, yoyo: true, repeat: -1 });
 
     // Upgrade panel for the selected kid.
-    this.upBtn = this.add.rectangle(710, 28, 110, 44, 0x2a2310).setStrokeStyle(2, 0xffc94a).setInteractive({ useHandCursor: true }).setVisible(false);
-    this.upTxt = this.add.text(710, 28, '', { ...FONT, fontSize: '18px', color: '#ffc94a', align: 'center' }).setOrigin(0.5).setVisible(false);
+    this.upBtn = this.add.rectangle(700, 28, 96, 44, 0x2a2310).setStrokeStyle(2, 0xffc94a).setInteractive({ useHandCursor: true }).setVisible(false);
+    this.upTxt = this.add.text(700, 28, '', { ...FONT, fontSize: '16px', color: '#ffc94a', align: 'center' }).setOrigin(0.5).setVisible(false);
     this.upBtn.on('pointerdown', () => this.scene.get('Game').upgradeSelected());
+    // Sell the selected block (also: X).
+    this.sellBtn = this.add.rectangle(785, 28, 66, 44, 0x0f2416).setStrokeStyle(2, 0x6bff9a).setInteractive({ useHandCursor: true }).setVisible(false);
+    this.sellTxt = this.add.text(785, 28, '', { ...FONT, fontSize: '16px', color: '#6bff9a', align: 'center' }).setOrigin(0.5).setVisible(false);
+    this.sellBtn.on('pointerdown', () => this.scene.get('Game').sellSelected());
 
     // Boss health bar (no name, no title).
     this.bossBarBg = this.add.rectangle(640, 76, 604, 16, 0x000000, 0.8).setStrokeStyle(2, 0xff2a3a).setVisible(false);
     this.bossBar = this.add.rectangle(340, 76, 600, 12, 0xff2a3a).setOrigin(0, 0.5).setVisible(false);
 
     // Pizza Hut van (also: P), with a cooldown bar.
-    this.pizzaBtn = this.add.rectangle(830, 28, 120, 44, 0x2a0e0c).setStrokeStyle(2, 0xd1201a).setInteractive({ useHandCursor: true });
-    this.pizzaCool = this.add.rectangle(770, 28, 120, 44, 0x000000, 0.65).setOrigin(0, 0.5).setScale(0, 1);
-    this.pizzaTxt = this.add.text(830, 28, `🍕 PIZZA [P]\n${CONFIG.pizza.cost} tok`, { ...FONT, fontSize: '16px', color: '#ffd6cf', align: 'center' }).setOrigin(0.5);
+    this.pizzaBtn = this.add.rectangle(872, 28, 100, 44, 0x2a0e0c).setStrokeStyle(2, 0xd1201a).setInteractive({ useHandCursor: true });
+    this.pizzaCool = this.add.rectangle(822, 28, 100, 44, 0x000000, 0.65).setOrigin(0, 0.5).setScale(0, 1);
+    this.pizzaTxt = this.add.text(872, 28, `🍕 PIZZA [P]\n${CONFIG.pizza.cost} tok`, { ...FONT, fontSize: '16px', color: '#ffd6cf', align: 'center' }).setOrigin(0.5);
     this.pizzaBtn.on('pointerdown', () => this.scene.get('Game').callPizza());
 
     // Nexios Sword button (also: S).
-    this.swordBtn = this.add.rectangle(955, 28, 120, 44, 0x10141c).setStrokeStyle(2, 0x3a3a55).setInteractive({ useHandCursor: true });
-    this.swordTxt = this.add.text(955, 28, '⚔ SWORD [S]', { ...FONT, fontSize: '18px', color: '#dfe6ee' }).setOrigin(0.5);
+    this.swordBtn = this.add.rectangle(976, 28, 100, 44, 0x10141c).setStrokeStyle(2, 0x3a3a55).setInteractive({ useHandCursor: true });
+    this.swordTxt = this.add.text(976, 28, '⚔ SWORD [S]', { ...FONT, fontSize: '17px', color: '#dfe6ee' }).setOrigin(0.5);
     this.swordBtn.on('pointerdown', () => this.scene.get('Game').useSword());
     this.swordGlow = this.tweens.add({ targets: this.swordBtn, alpha: 0.55, duration: 400, yoyo: true, repeat: -1, paused: true });
     this.setSword(0);
@@ -162,10 +166,12 @@ export default class UIScene extends Phaser.Scene {
     const t = this.selectedTower;
     const show = !!t;
     this.upBtn?.setVisible(show); this.upTxt?.setVisible(show);
+    this.sellBtn?.setVisible(show); this.sellTxt?.setVisible(show);
     if (!show) return;
+    this.sellTxt.setText(`SELL [X]\n+${sellValue(t.type, t.level)} tok`);
     const cost = upgradeCost(t.type, t.level);
-    if (cost === null) { this.upTxt.setText('MAX  Lv10'); this.upBtn.setAlpha(0.5); return; }
-    this.upTxt.setText(`UPGRADE [U]\nLv${t.level + 1}→${t.level + 2}  ${cost} tok`);
+    if (cost === null) { this.upTxt.setText('MAX\nLv10'); this.upBtn.setAlpha(0.5); return; }
+    this.upTxt.setText(`UPGRADE [U]\nLv${t.level + 1}→${t.level + 2} ${cost} tok`);
     this.upBtn.setAlpha(this.tokens >= cost ? 1 : 0.4);
   }
 
