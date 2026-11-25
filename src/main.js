@@ -26,3 +26,5 @@ window.addEventListener('error', ev => {
     location.replace(location.pathname + '?canvas' + (params.has('debug') ? '&debug' : ''));
   }
 });
+
+if (params.has('debug')) window.__game = game;   // test hook, only with ?debug
