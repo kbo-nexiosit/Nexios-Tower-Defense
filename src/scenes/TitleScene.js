@@ -29,7 +29,7 @@ export default class TitleScene extends Phaser.Scene {
     this.add.text(cx, 345, 'The kids must defend the NexiosIT office until dawn.',
       { fontFamily: '"VT323", monospace', fontSize: '27px', color: '#e8e8f0' }).setOrigin(0.5);
     this.add.text(cx, 430,
-      'Place kids beside the road  •  Earn arcade tokens  •  Ring the bell\nClear a wave with no leaks to win the Nexios Sword  •  Beware the Upside Down\n\nSPACE start wave   •   S Nexios Sword   •   P Pizza Hut',
+      'Place kids beside the road  •  Earn arcade tokens  •  Ring the bell\nClear a wave with no leaks to win the Nexios Sword  •  Beware the Upside Down\n\nSPACE start wave   •   S Nexios Sword   •   P Pizza Hut   •   M music on/off',
       { fontFamily: '"VT323", monospace', fontSize: '20px', color: '#9aa0b8', align: 'center', lineSpacing: 8 }).setOrigin(0.5);
     // A little standoff: the kids with flashlights facing monsters by the Rift.
     const ground = this.add.rectangle(0, 650, 1280, 70, 0x10201a).setOrigin(0);

@@ -59,8 +59,17 @@ export default class UIScene extends Phaser.Scene {
     this.upsidePulse = this.tweens.add({ targets: this.upsideTxt, alpha: 0.4, duration: 450, yoyo: true, repeat: -1, paused: true });
 
     // Mute toggle.
-    const mute = this.add.text(1246, 28, sfx.isMuted() ? '🔇' : '🔊', { fontSize: '22px' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    const mute = this.add.text(1254, 28, sfx.isMuted() ? '🔇' : '🔊', { fontSize: '22px' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     mute.on('pointerdown', () => { sfx.setMuted(!sfx.isMuted()); mute.setText(sfx.isMuted() ? '🔇' : '🔊'); });
+
+    // Music only (sound effects keep playing). Also: M.
+    const note = this.add.text(1216, 28, '🎵', { fontSize: '22px' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    const slash = this.add.rectangle(1216, 28, 30, 3, 0xff3a3a).setAngle(-45);
+    const showMusic = () => { note.setAlpha(sfx.isMusicMuted() ? 0.4 : 1); slash.setVisible(sfx.isMusicMuted()); };
+    const toggleMusic = () => { sfx.setMusicMuted(!sfx.isMusicMuted()); showMusic(); };
+    note.on('pointerdown', toggleMusic);
+    this.input.keyboard.on('keydown-M', toggleMusic);
+    showMusic();
 
     this.input.on('pointerdown', () => sfx.unlock());
     const ev = this.game.events;

@@ -115,7 +115,14 @@ export function upsideDrone(on) {
 }
 
 // --- Normal-world music: an original 80s synth loop (drum machine, bass, arpeggio, pads).
-let music = null;
+let music = null, musicMuted = false;
+const musicLevel = () => (musicMuted ? 0.0001 : music && music.ducked ? 0.35 : 0.9);
+export const isMusicMuted = () => musicMuted;
+// Music on/off, independent of the sound effects.
+export function setMusicMuted(m) {
+  musicMuted = m;
+  if (music) music.out.gain.setTargetAtTime(musicLevel(), ctx.currentTime, 0.1);
+}
 const BPM = 118, STEP = 60 / BPM / 4;                       // 16th notes
 const midi = n => 440 * Math.pow(2, (n - 69) / 12);
 // Original upbeat 8-bar progression: C – G – Am – F (two bars each).
@@ -157,9 +164,10 @@ export function musicStart() {
   if (!ctx || music) return;
   const bus = ctx.createGain(), lp = ctx.createBiquadFilter(), out = ctx.createGain();
   lp.type = 'lowpass'; lp.frequency.value = 12000;
-  out.gain.value = 0.0001; out.gain.setTargetAtTime(0.9, ctx.currentTime, 0.8);
+  out.gain.value = 0.0001;
   bus.connect(lp).connect(out).connect(master);
-  music = { bus, lp, out, next: ctx.currentTime + 0.1, step: 0 };
+  music = { bus, lp, out, next: ctx.currentTime + 0.1, step: 0, ducked: false };
+  out.gain.setTargetAtTime(musicLevel(), ctx.currentTime, 0.8);
   music.timer = setInterval(() => {
     if (!music || ctx.state !== 'running') return;
     if (music.next < ctx.currentTime) music.next = ctx.currentTime + 0.05;   // after a stall, don't play catch-up
@@ -171,8 +179,9 @@ export function musicStart() {
 export function musicDuck(on) {
   if (!music) return;
   const t = ctx.currentTime;
+  music.ducked = on;
   music.lp.frequency.setTargetAtTime(on ? 450 : 12000, t, 0.3);
-  music.out.gain.setTargetAtTime(on ? 0.35 : 0.9, t, 0.3);
+  music.out.gain.setTargetAtTime(musicLevel(), t, 0.3);
 }
 
 export function musicStop() {
