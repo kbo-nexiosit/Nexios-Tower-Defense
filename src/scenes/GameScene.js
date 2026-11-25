@@ -411,7 +411,10 @@ export default class GameScene extends Phaser.Scene {
     if (this.wallet.tokens < cost) { this.ui.toast(`Not enough tokens for that kid (${cost}).`); return; }
     const { cells } = this.picking;
     const res = canPlace(this.grid, cells, { spawn: M.spawn, goal: M.goal, occupied: this.occupied() });
-    if (!res.ok) { this.ui.toast('A monster walked into the spot — try again.'); this.cancelPick(); return; }
+    if (!res.ok) {
+      this.ui.toast(res.reason === 'enemy' ? 'A monster walked into the spot — try again.' : 'That would block the path — the monsters must always get through.');
+      this.cancelPick(); return;
+    }
     this.wallet.spend(cost);
     const id = this.nextId++;
     placeOnGrid(this.grid, cells, id);
