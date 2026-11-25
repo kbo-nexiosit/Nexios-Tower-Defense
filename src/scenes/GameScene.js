@@ -8,6 +8,7 @@ import { placeTower, stepTower, upgradeTowerStats } from '../entities/Tower.js';
 import { upgradeCost } from '../logic/combat.js';
 import { crossedThresholds } from '../logic/boss.js';
 import { createSword } from '../logic/sword.js';
+import { rollFlip, flipModifiers } from '../logic/flip.js';
 import { waveSchedule, clearBonus } from '../logic/waves.js';
 import * as sfx from '../audio/sfx.js';
 
@@ -34,6 +35,9 @@ export default class GameScene extends Phaser.Scene {
     this.now = 0;
     this.bossDefeated = false;
     this.sword = createSword();
+    this.upside = false;
+    this.upsideUntil = 0;
+    this.flipPending = false;
     this.boss = null;
     this.sfx = sfx;
     this.wave = 0;
@@ -58,10 +62,56 @@ export default class GameScene extends Phaser.Scene {
     }
     this.emitAll();
     sfx.ambient(true);
+
+    // Upside Down: overlays sit above the town but below kids and monsters, so those stay readable.
+    this.coldLayer = this.add.rectangle(640, 360, 1280, 720, 0x5a6fa8).setDepth(3.5).setBlendMode(Phaser.BlendModes.MULTIPLY).setAlpha(0);
+    this.redLayer = this.add.rectangle(640, 360, 1280, 720, 0xff2a3a).setDepth(3.6).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0);
+    this.ash = this.add.particles(0, 0, 'ash', {
+      x: { min: 0, max: 1280 }, y: { min: 60, max: 720 }, lifespan: 4000, speedY: { min: 10, max: 40 }, speedX: { min: -15, max: 15 },
+      alpha: { start: 0.8, end: 0 }, quantity: 3, frequency: 80, emitting: false,
+    }).setDepth(9);
+    this.time.addEvent({ delay: CONFIG.flip.rollEveryMs, loop: true, callback: () => {
+      if (this.waveActive && !this.upside && !this.flipPending && !this.over && rollFlip(this.wave)) this.triggerFlip();
+    } });
+  }
+
+  // A one-second flicker warns that the Upside Down is coming.
+  triggerFlip() {
+    if (this.over) return;
+    if (this.upside) { this.upsideUntil = this.now + CONFIG.flip.durationMs; return; }
+    if (this.flipPending) return;
+    this.flipPending = true;
+    this.game.events.emit('upsideWarn');
+    const flick = this.add.rectangle(640, 360, 1280, 720, 0x000000).setDepth(3.7).setAlpha(0);
+    this.tweens.add({ targets: flick, alpha: 0.6, duration: CONFIG.flip.warnMs / 8, yoyo: true, repeat: 3, onComplete: () => { flick.destroy(); this.enterUpside(); } });
+  }
+
+  enterUpside() {
+    this.flipPending = false;
+    if (this.over) return;
+    this.upside = true;
+    this.upsideUntil = this.now + CONFIG.flip.durationMs;
+    sfx.flip();
+    sfx.ambient(true, 0.12);
+    this.cameras.main.shake(400, 0.008);
+    this.tweens.add({ targets: this.cameras.main, rotation: Math.PI, duration: 900, ease: 'Cubic.easeInOut' });
+    this.tweens.add({ targets: this.coldLayer, alpha: 1, duration: 900 });
+    this.tweens.add({ targets: this.redLayer, alpha: 0.18, duration: 900 });
+    this.ash.start();
+    this.game.events.emit('upside', true);
+  }
+
+  exitUpside() {
+    this.upside = false;
+    sfx.ambient(true, 0.04);
+    this.tweens.add({ targets: this.cameras.main, rotation: 0, duration: 900, ease: 'Cubic.easeInOut' });
+    this.tweens.add({ targets: [this.coldLayer, this.redLayer], alpha: 0, duration: 900 });
+    this.ash.stop();
+    this.game.events.emit('upside', false);
   }
 
   // Modifiers for newly spawned enemies (the Upside Down changes these).
-  spawnMods() { return { hpMult: 1, speedMult: 1 }; }
+  spawnMods() { return flipModifiers(this.upside); }
 
   startWave() {
     if (this.over || this.waveActive || this.wave >= CONFIG.waves.count) return;
@@ -151,6 +201,7 @@ export default class GameScene extends Phaser.Scene {
 
   bossPhase() {
     this.events.emit('bossPhase');
+    this.triggerFlip();   // each boss phase drags the town into the Upside Down
     sfx.boss();
     this.cameras.main.shake(500, 0.01);
     this.cameras.main.flash(300, 160, 0, 30);
@@ -235,11 +286,15 @@ export default class GameScene extends Phaser.Scene {
     return canPlace(p, this.towers, ROAD);
   }
 
+  // Pointer in world space (the camera is rotated in the Upside Down).
+  worldPoint(p) { return { x: p.worldX, y: p.worldY }; }
+
   updateGhost(p) {
     const type = this.registry.get('selected');
     if (!type || p.y < HUD_H) { this.ghost.setVisible(false); return; }
-    const ok = this.isFree(p) && this.wallet.tokens >= CONFIG.towers[type].cost;
-    this.ghost.setPosition(p.x, p.y).setRadius(CONFIG.towers[type].range).setVisible(true)
+    const w = this.worldPoint(p);
+    const ok = this.isFree(w) && this.wallet.tokens >= CONFIG.towers[type].cost;
+    this.ghost.setPosition(w.x, w.y).setRadius(CONFIG.towers[type].range).setVisible(true)
       .setFillStyle(ok ? 0xffffff : 0xff3030, 0.12).setStrokeStyle(2, ok ? 0xffffff : 0xff3030, 0.5);
   }
 
@@ -247,9 +302,10 @@ export default class GameScene extends Phaser.Scene {
     if (this.over || p.y < HUD_H) return;
     this.selectTower(null);
     const type = this.registry.get('selected');
-    if (!type || !this.isFree(p)) return;
+    const w = this.worldPoint(p);
+    if (!type || !this.isFree(w)) return;
     if (!this.wallet.spend(CONFIG.towers[type].cost)) return;
-    this.towers.push(placeTower(this, type, p.x, p.y));
+    this.towers.push(placeTower(this, type, w.x, w.y));
     this.game.events.emit('tokens', this.wallet.tokens);
     this.updateGhost(p);
   }
@@ -317,6 +373,7 @@ export default class GameScene extends Phaser.Scene {
     const dt = Math.min(delta, 50);
     this.now += dt;   // game clock: only advances with frames, never jumps
     const now = this.now;
+    if (this.upside && now >= this.upsideUntil) this.exitUpside();
     for (const e of this.enemies) {
       if (e.alive && stepEnemy(this, e, dt, now)) this.leak(e);
     }

@@ -47,6 +47,11 @@ export default class UIScene extends Phaser.Scene {
     this.swordGlow = this.tweens.add({ targets: this.swordBtn, alpha: 0.55, duration: 400, yoyo: true, repeat: -1, paused: true });
     this.setSword(0);
 
+    // Upside Down alert.
+    this.upsideTxt = this.add.text(640, 100, '', { fontFamily: 'Georgia, serif', fontSize: '28px', color: '#ff2a3a', fontStyle: 'bold', stroke: '#000', strokeThickness: 5 })
+      .setOrigin(0.5).setShadow(0, 0, '#ff2a3a', 16, true, true).setVisible(false);
+    this.upsidePulse = this.tweens.add({ targets: this.upsideTxt, alpha: 0.4, duration: 450, yoyo: true, repeat: -1, paused: true });
+
     // Mute toggle.
     const mute = this.add.text(1246, 28, sfx.isMuted() ? '🔇' : '🔊', { fontSize: '22px' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     mute.on('pointerdown', () => { sfx.setMuted(!sfx.isMuted()); mute.setText(sfx.isMuted() ? '🔇' : '🔊'); });
@@ -62,6 +67,11 @@ export default class UIScene extends Phaser.Scene {
       this.bossBar.width = 600 * Math.max(0, hp / max);
     });
     on('sword', n => this.setSword(n));
+    on('upsideWarn', () => { this.upsideTxt.setText('something is wrong…').setVisible(true); this.upsidePulse.resume(); });
+    on('upside', active => {
+      if (active) { this.upsideTxt.setText('THE UPSIDE DOWN'); this.upsideTxt.setVisible(true); this.upsidePulse.resume(); }
+      else { this.upsideTxt.setVisible(false); this.upsidePulse.pause(); }
+    });
     on('towerSelected', t => { this.selectedTower = t; this.refreshUpgrade(); });
     on('waveState', active => {
       this.startBtn.setVisible(!active); this.startTxt.setVisible(!active);
