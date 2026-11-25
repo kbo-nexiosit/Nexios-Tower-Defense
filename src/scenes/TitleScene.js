@@ -31,7 +31,25 @@ export default class TitleScene extends Phaser.Scene {
     this.add.text(cx, 430,
       'Place kids beside the road  •  Earn arcade tokens  •  Ring the bell\nClear a wave with no leaks to win the Nexios Sword  •  Beware the Upside Down\n\nSPACE start wave   •   S Nexios Sword   •   P Pizza Hut',
       { fontFamily: '"VT323", monospace', fontSize: '20px', color: '#9aa0b8', align: 'center', lineSpacing: 8 }).setOrigin(0.5);
-    const start = this.add.text(cx, 560, 'CLICK TO START', { fontFamily: '"VT323", monospace', fontSize: '43px', color: '#ff3fa4' }).setOrigin(0.5);
+    // A little standoff: the kids with flashlights facing monsters by the Rift.
+    const ground = this.add.rectangle(0, 650, 1280, 70, 0x10201a).setOrigin(0);
+    this.add.rectangle(0, 648, 1280, 3, 0x1f3a28).setOrigin(0);
+    const kids = ['slingshot', 'walkie', 'psychic'];
+    kids.forEach((k, i) => {
+      const x = 190 + i * 90, y = 628;
+      const beam = this.add.triangle(x + 20, y - 10, 0, 0, 260, -40, 260, 40, 0xfff2c4, 0.10).setOrigin(0, 0.5).setBlendMode(Phaser.BlendModes.ADD);
+      this.tweens.add({ targets: beam, alpha: 0.04, duration: 900 + i * 200, yoyo: true, repeat: -1 });
+      this.add.image(x, y, k).setScale(1.6);
+    });
+    this.add.image(110, 624, 'lights').setScale(1.6);
+    const rift = this.add.ellipse(1190, 600, 50, 130, 0xff2a3a).setAlpha(0.9);
+    this.add.ellipse(1190, 600, 20, 100, 0x2a0008);
+    this.tweens.add({ targets: rift, scaleX: 1.25, alpha: 0.6, yoyo: true, repeat: -1, duration: 700 });
+    this.add.sprite(1040, 622, 'brute', 0).setScale(1.5).setFlipX(true).play('brute-walk');
+    this.add.sprite(930, 640, 'crawler', 0).setScale(1.5).setFlipX(true).play('crawler-walk');
+    this.add.sprite(1110, 560, 'swarm', 0).setScale(1.5).play('swarm-walk');
+
+    const start = this.add.text(cx, 560, 'CLICK TO START', { fontFamily: '"Press Start 2P", monospace', fontSize: '26px', color: '#ff3fa4' }).setOrigin(0.5);
     this.tweens.add({ targets: start, alpha: 0.3, duration: 700, yoyo: true, repeat: -1 });
 
     this.input.once('pointerdown', () => {
