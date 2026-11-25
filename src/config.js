@@ -7,7 +7,7 @@ const CONFIG = {
     houses: [[4, 2], [9, 15], [14, 4], [19, 13], [23, 3], [27, 15], [6, 7]],   // 2x2 fixed obstacles
     trees: [[2, 16], [11, 8], [16, 17], [21, 8], [26, 9], [29, 5], [12, 1], [30, 18], [8, 12], [17, 1], [25, 12], [3, 5]],
   },
-  startTokens: 120, baseHealth: 20,
+  startTokens: 160, baseHealth: 20,   // blocks double as walls, so the opening needs a few
   towers: {
     slingshot: { cost: 25, range: 110, damage: 6,  fireMs: 400,  levels: [{ cost: 30, damage: 10 }, { cost: 50, damage: 16, range: 130 }] },
     walkie:    { cost: 40, range: 90,  slow: 0.5,  slowMs: 1500, pulseMs: 1000, levels: [{ cost: 35, slow: 0.4 }, { cost: 55, slow: 0.3, range: 110 }] },
