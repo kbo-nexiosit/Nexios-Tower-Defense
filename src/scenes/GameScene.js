@@ -2,7 +2,7 @@ import CONFIG from '../config.js';
 import { createWallet } from '../logic/economy.js';
 import { applyDamage, upgradeCost, sauce } from '../logic/combat.js';
 import { makeTextures, PALETTE, PIXEL_FONT } from '../art/textures.js';
-import { makeMazeGround, makeVignette } from '../art/environment.js';
+import { makeMazeGround, makeVignette, makeGlow } from '../art/environment.js';
 import { spawnEnemy, stepEnemy, removeEnemy, enemyReward, enemyLeak, enemyCells } from '../entities/Enemy.js';
 import { placeBlock as placeBlockEntity, refreshBlock, stepTower, upgradeTowerStats } from '../entities/Tower.js';
 import { spawnVan, stepVan } from '../entities/PizzaVan.js';
@@ -125,6 +125,7 @@ export default class GameScene extends Phaser.Scene {
       // Edge-on: the backside comes into view.
       this.coldLayer.setAlpha(1); this.redLayer.setAlpha(0.18); this.vines.setAlpha(1);
       this.ash.start();
+      this.fireflies.stop(); this.fireflies.setVisible(false);
     });
     this.lightning = this.time.addEvent({ delay: 2600, loop: true, callback: () => {
       if (!this.upside || Math.random() < 0.4) return;
@@ -168,6 +169,7 @@ export default class GameScene extends Phaser.Scene {
     this.cardFlip(1, () => {
       this.coldLayer.setAlpha(0); this.redLayer.setAlpha(0); this.vines.setAlpha(0);
       this.ash.stop();
+      this.fireflies.setVisible(true); this.fireflies.start();
     });
     this.game.events.emit('upside', false);
   }
@@ -307,10 +309,52 @@ export default class GameScene extends Phaser.Scene {
     this.add.image(0, 0, 'maze-ground').setOrigin(0).setScale(2).setDepth(0);
     this.add.image(0, 0, 'vignette').setOrigin(0).setScale(2).setDepth(19);
     // The Rift at the spawn square: a pulsing red gash with a dark core.
+    makeGlow(this);
+    const ADD = Phaser.BlendModes.ADD;
+    const glow = (x, y, tint, scale, alpha, depth = 2.4) => this.add.image(x, y, 'glow').setTint(tint).setBlendMode(ADD).setScale(scale).setAlpha(alpha).setDepth(depth);
+    // The Rift at the spawn square: a shimmering red tear that breathes light and sheds embers.
     const s = this.cellCenter(M.spawn);
-    const rift = this.add.ellipse(s.x, s.y, 30, 80, PALETTE.rift).setDepth(2);
-    this.add.ellipse(s.x, s.y, 12, 62, 0x2a0008).setDepth(2);
-    this.tweens.add({ targets: rift, scaleX: 1.25, alpha: 0.7, yoyo: true, repeat: -1, duration: 700 });
+    const riftGlow = glow(s.x, s.y, PALETTE.rift, 5, 0.5, 1.9).setScale(4.5, 7);
+    this.tweens.add({ targets: riftGlow, alpha: 0.22, scaleX: 5.6, yoyo: true, repeat: -1, duration: 900, ease: 'Sine.easeInOut' });
+    const rift = this.add.sprite(s.x, s.y, 'rift', 0).setDepth(2).play('rift-shimmer');
+    this.tweens.add({ targets: rift, scaleX: 1.12, yoyo: true, repeat: -1, duration: 700, ease: 'Sine.easeInOut' });
+    this.add.particles(s.x, s.y, 'dot', {
+      x: { min: -8, max: 8 }, y: { min: -42, max: 42 }, speedX: { min: 8, max: 46 }, speedY: { min: -26, max: 6 },
+      lifespan: { min: 900, max: 2000 }, scale: { start: 0.8, end: 0 }, alpha: { start: 0.9, end: 0 }, tint: 0xff6a50, frequency: 130, blendMode: ADD,
+    }).setDepth(2.1);
+
+    // Warm light at the office door and the street lamps (the pools on the ground are baked in).
+    const door = glow(OFFICE.x + 2, OFFICE.y + OFFICE.h * 0.44 + 14, 0xffd890, 4.5, 0.3);
+    this.tweens.add({ targets: door, alpha: 0.2, yoyo: true, repeat: -1, duration: 1600, ease: 'Sine.easeInOut' });
+    const paveX = M.x0 + M.cols * M.cell + 2;
+    [44, 132, 282, 344].forEach((ly, i) => {
+      const g = glow(paveX + 7, ly * 2 - 24, 0xfff0c0, 1.8, 0.55);
+      if (i === 2) this.tweens.add({ targets: g, alpha: 0.15, duration: 70, yoyo: true, repeat: -1, repeatDelay: 3400, hold: 60 });   // one dodgy lamp
+    });
+    // Chimney smoke from a few houses.
+    M.houses.forEach(([c, r], n) => {
+      if (n % 2) return;
+      const cx = M.x0 + c * M.cell + 2 + ((n % 3 === 1 ? 6 : 21) + 2) * 2, cy = M.y0 + r * M.cell + 2;
+      this.add.particles(cx, cy, 'smoke', {
+        speedX: { min: 4, max: 12 }, speedY: { min: -22, max: -12 }, lifespan: 2800, scale: { start: 0.7, end: 2.4 },
+        alpha: { start: 0.3, end: 0 }, tint: 0x9098a8, frequency: 650,
+      }).setDepth(3.3);
+    });
+    // Fireflies over the meadow (they vanish in the Upside Down).
+    this.fireflies = this.add.particles(0, 0, 'dot', {
+      x: { min: 20, max: paveX - 20 }, y: { min: HUD_H + 30, max: 700 }, lifespan: { min: 2600, max: 5200 },
+      speed: { min: 4, max: 16 }, angle: { min: 0, max: 360 }, scale: 0.5, tint: 0xd8ff8a, frequency: 240, blendMode: ADD,
+      alpha: { onEmit: () => 0, onUpdate: (p, k, t) => Math.sin(t * Math.PI) * 0.9 },
+    }).setDepth(3.3);
+    // Shared burst emitter for hits, deaths and dust.
+    this.fx = this.add.particles(0, 0, 'dot', {
+      speed: { min: 30, max: 150 }, angle: { min: 0, max: 360 }, lifespan: { min: 220, max: 520 },
+      scale: { start: 1.1, end: 0 }, gravityY: 220, emitting: false,
+    }).setDepth(9);
+    this.fxDust = this.add.particles(0, 0, 'dot', {
+      speed: { min: 10, max: 70 }, angle: { min: 0, max: 360 }, lifespan: { min: 160, max: 380 },
+      scale: { start: 0.8, end: 0 }, gravityY: 120, emitting: false,
+    }).setDepth(9);
     this.drawBuildings();
   }
 
@@ -325,10 +369,13 @@ export default class GameScene extends Phaser.Scene {
   drawRoute() {
     const pts = routeFrom(this.grid, this.dist, M.spawn).map(c => this.cellCenter(c));
     const g = this.routeGfx.clear();
-    g.lineStyle(14, 0x3a2b20, 0.55);
-    for (let i = 1; i < pts.length; i++) g.lineBetween(pts[i - 1].x, pts[i - 1].y, pts[i].x, pts[i].y);
-    g.fillStyle(0x3a2b20, 0.55);
-    pts.forEach(p => g.fillCircle(p.x, p.y, 7));
+    for (const [w, col, a] of [[18, 0x1c140e, 0.35], [12, 0x3a2b20, 0.6], [4, 0x574332, 0.45]]) {
+      g.lineStyle(w, col, a).beginPath().moveTo(pts[0].x, pts[0].y);
+      pts.slice(1).forEach(p => g.lineTo(p.x, p.y));
+      g.strokePath();
+      g.fillStyle(col, a);
+      pts.forEach(p => g.fillCircle(p.x, p.y, w / 2));
+    }
   }
 
   // Pointer in world space (the camera is mirrored in the Upside Down).
@@ -420,6 +467,8 @@ export default class GameScene extends Phaser.Scene {
     const id = this.nextId++;
     placeOnGrid(this.grid, cells, id);
     this.towers.push(placeBlockEntity(this, type, cells, id));
+    cells.forEach(c => { const p = this.cellCenter(c); this.burst(p.x, p.y + 10, 0x9a8a68, 4, 0.5); });
+    this.cameras.main.shake(70, 0.002);
     this.recomputeMaze();
     this.shape = this.bag.next();
     this.rot = 0;
@@ -455,10 +504,12 @@ export default class GameScene extends Phaser.Scene {
     this.game.events.emit('tokens', this.wallet.tokens);
     this.selectTower(t);
     this.puff(t.x, t.y, 0xffc94a);
+    this.float(t.x, t.y - 18, 'LEVEL UP', '#ffc94a');
   }
 
   hit(target, damage) {
     const prevHp = target.hp;
+    target.flashUntil = this.now + 70;
     const { killed } = applyDamage(target, damage, this.now);
     this.afterDamage(target, prevHp, killed);
   }
@@ -472,16 +523,38 @@ export default class GameScene extends Phaser.Scene {
     }
     if (!killed) return;
     this.wallet.earn(enemyReward(target));
+    if (enemyReward(target) > 0) this.float(target.x, target.y - 14, '+' + enemyReward(target), '#ffc94a');
+    // A dark stain where it fell, fading into the grass.
+    const stain = this.add.image(target.x, target.y + 8, 'smoke').setTint(0x2a0810).setAlpha(0.55).setScale(2.2, 1.2).setDepth(1.4);
+    this.tweens.add({ targets: stain, alpha: 0, delay: 2500, duration: 2500, onComplete: () => stain.destroy() });
     this.game.events.emit('tokens', this.wallet.tokens);
     this.puff(target.x, target.y, 0xd94a6a);
     removeEnemy(target);
   }
 
+  // A spray of pixel particles (speed 1 = a death burst, lower = dust and chips).
+  burst(x, y, color, count = 10, speed = 1) {
+    const em = speed < 1 ? this.fxDust : this.fx;
+    em.setParticleTint(color);
+    em.emitParticleAt(x, y, count);
+  }
+
+  // A quick bloom of light.
+  flashGlow(x, y, color, scale = 3) {
+    const g = this.add.image(x, y, 'glow').setTint(color).setBlendMode(Phaser.BlendModes.ADD).setScale(scale * 0.4).setAlpha(0.8).setDepth(8.5);
+    this.tweens.add({ targets: g, scale, alpha: 0, duration: 260, ease: 'Cubic.easeOut', onComplete: () => g.destroy() });
+  }
+
   puff(x, y, color) {
-    for (let i = 0; i < 8; i++) {
-      const d = this.add.image(x, y, 'dot').setTint(color).setDepth(9);
-      this.tweens.add({ targets: d, x: x + Phaser.Math.Between(-24, 24), y: y + Phaser.Math.Between(-24, 24), alpha: 0, duration: 350, onComplete: () => d.destroy() });
-    }
+    this.burst(x, y, color, 12);
+    this.flashGlow(x, y, color);
+  }
+
+  // Floating text over the board (skipped while the board is mirrored, where it would read upside down).
+  float(x, y, text, color) {
+    if (this.upside || this.midFlip()) return;
+    const t = this.add.text(x, y, text, { fontFamily: '"VT323", monospace', fontSize: '20px', color, stroke: '#000', strokeThickness: 4 }).setOrigin(0.5).setDepth(9.5);
+    this.tweens.add({ targets: t, y: y - 26, alpha: 0, duration: 750, ease: 'Cubic.easeOut', onComplete: () => t.destroy() });
   }
 
   leak(e) {
