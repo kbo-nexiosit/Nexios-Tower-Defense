@@ -114,6 +114,7 @@ export default class UIScene extends Phaser.Scene {
     });
     this.tokens = 0;
     this.scene.get('Game').emitAll();   // UI starts a frame after Game; pull current values
+    this.scene.get('Game').emitShapes();
   }
 
   makeTowerButton(info, x) {
