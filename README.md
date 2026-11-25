@@ -124,3 +124,7 @@ The site is served by GitHub Pages straight from the repository's files. There's
 ## Classic version
 
 The original winding-road version is kept at `/classic/` (https://kbo-nexiosit.github.io/Nexios-Tower-Defense/classic/) and tagged `classic-road`.
+
+## Design
+
+All specs and decisions live in [docs/GAME-DESIGN.md](docs/GAME-DESIGN.md).
