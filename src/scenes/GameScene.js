@@ -118,7 +118,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   useSword() {
-    if (this.over || !this.sword.use()) return;
+    if (this.over || !this.enemies.some(e => e.alive) || !this.sword.use()) return;   // never wasted on an empty board
     this.game.events.emit('sword', this.sword.charges);
     sfx.sword();
     const c = this.add.container(-400, 380, [this.add.image(0, 0, 'sword')]).setScale(3).setDepth(40).setAngle(-12);
