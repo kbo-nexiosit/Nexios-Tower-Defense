@@ -1,11 +1,15 @@
 import * as sfx from '../audio/sfx.js';
+import { makeTitleBackdrop } from '../art/environment.js';
 
 export default class EndScene extends Phaser.Scene {
   constructor() { super('End'); }
 
   create({ won, wave = 0 }) {
     const cx = 640;
+    makeTitleBackdrop(this);
     this.add.rectangle(0, 0, 1280, 720, won ? 0x0b1020 : 0x1a0005).setOrigin(0);
+    this.add.image(0, 0, 'title-bg').setOrigin(0).setScale(2).setTint(won ? 0xffffff : 0xff5a5a);
+    this.add.rectangle(0, 0, 1280, 720, won ? 0x05060f : 0x140004, 0.5).setOrigin(0);
     this.add.text(cx, 220, won ? 'OFFICE SAVED' : 'THE GATE IS OPEN',
       { fontFamily: '"Press Start 2P", monospace', fontSize: '44px', color: won ? '#6bff6b' : '#ff2a3a' }).setOrigin(0.5);
     this.add.text(cx, 300, won ? 'The kids held the line. The Upside Down retreats.' : `The monsters overran the NexiosIT office on wave ${wave}.`,

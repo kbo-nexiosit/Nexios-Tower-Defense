@@ -30,6 +30,7 @@ function kidBase({ hair, top, pants, shoes = C.shoe, longHair = false, cap = nul
   p.set(5, 7, hair).set(12, 7, hair);
   if (longHair) { p.rect(4, 6, 1, 7, hair).rect(13, 6, 1, 7, hair); }
   if (cap) { p.ellipse(9, 4, 4.8, 2.4, cap).rect(9, 5, 6, 1, shadeHex(cap, 0.7)); }
+  p.set(7, 3, shadeHex(hair, 1.45)).set(8, 2, shadeHex(hair, 1.45)).set(9, 2, shadeHex(hair, 1.25));
   // face
   p.set(7, 8, OUTLINE).set(10, 8, OUTLINE);
   p.set(8, 10, C.skinD).set(9, 10, C.skinD);
@@ -244,19 +245,72 @@ export const KID_COLOURS = { slingshot: C.blue, walkie: C.green, psychic: C.purp
 
 export function crateTile(band) {
   const p = new Pix(16, 16);
-  p.rect(0, 0, 16, 16, '#7a5230');
-  p.rect(0, 0, 16, 1, '#a8774a').rect(0, 0, 1, 16, '#a8774a');
-  p.rect(0, 15, 16, 1, '#4a2e18').rect(15, 0, 1, 16, '#4a2e18');
-  p.line(1, 1, 14, 14, '#5c3c20').line(14, 1, 1, 14, '#5c3c20');
-  p.rect(0, 6, 16, 4, band).rect(0, 6, 16, 1, shadeHex(band, 1.3)).rect(0, 9, 16, 1, shadeHex(band, 0.6));
-  [[2, 2], [13, 2], [2, 13], [13, 13]].forEach(([x, y]) => p.set(x, y, '#d8c8a0'));
+  // planks
+  for (let y = 0; y < 16; y++) p.rect(0, y, 16, 1, y % 5 === 4 ? '#4f3219' : (Math.floor(y / 5) % 2 ? '#74502e' : '#7d5632'));
+  [[3, 1], [9, 2], [12, 6], [5, 12], [10, 13], [2, 7]].forEach(([x, y]) => p.set(x, y, '#8c6238').set(x + 1, y, '#684626'));   // grain
+  // coloured strap with a buckle
+  p.rect(0, 5, 16, 6, band).rect(0, 5, 16, 1, shadeHex(band, 1.35)).rect(0, 10, 16, 1, shadeHex(band, 0.55)).rect(0, 9, 16, 1, shadeHex(band, 0.8));
+  p.rect(6, 6, 4, 4, shadeHex(band, 1.5)).rect(7, 7, 2, 2, shadeHex(band, 0.6));
+  // bevelled frame and iron corners
+  p.rect(0, 0, 16, 1, '#b48654').rect(0, 0, 1, 16, '#a87a4a');
+  p.rect(0, 15, 16, 1, '#3a2412').rect(15, 0, 1, 16, '#3a2412');
+  [[0, 0], [13, 0], [0, 13], [13, 13]].forEach(([x, y]) => p.rect(x, y, 3, 3, '#59606c').set(x + 1, y + 1, '#c8d0da'));
   return p;
 }
 
 export function wallTile() {
   const p = new Pix(16, 16);
-  p.rect(0, 0, 16, 16, '#3a3640');
-  for (let r = 0; r < 4; r++) { const off = r % 2 ? 4 : 0; p.rect(0, r * 4, 16, 1, '#26232c'); for (let x = off; x < 16; x += 8) p.rect(x, r * 4, 1, 4, '#26232c'); }
-  p.rect(0, 0, 16, 1, '#55505c');
+  p.rect(0, 0, 16, 16, '#3c3844');
+  for (let r = 0; r < 4; r++) {
+    const off = r % 2 ? 4 : 0;
+    p.rect(0, r * 4 + 3, 16, 1, '#221f28');
+    p.rect(0, r * 4, 16, 1, '#4c4856');
+    for (let x = off; x < 16; x += 8) p.rect(x, r * 4, 1, 4, '#221f28');
+  }
+  [[2, 1], [10, 5], [5, 9], [13, 13], [7, 14]].forEach(([x, y]) => p.set(x, y, '#5a5666'));
+  p.set(1, 14, '#2e4a34').set(2, 14, '#2e4a34').set(1, 13, '#3a5e40').set(12, 2, '#2e4a34');   // moss
+  p.rect(0, 15, 16, 1, '#1a1820').rect(15, 0, 1, 16, '#1a1820');
   return p;
+}
+
+// --- The Rift, effects and HUD icons --------------------------------------------
+
+// A jagged, glowing tear in the world. Three shimmering frames.
+export function riftFrames() {
+  const jit = (y, f, k) => { let h = Math.imul(y * 31 + f * 17 + k * 101, 2654435761) >>> 0; return (h >>> 28) / 16; };
+  return [0, 1, 2].map(f => {
+    const p = new Pix(26, 52);
+    // roots creeping out
+    [[13, 6, 4, 1], [13, 12, 22, 5], [13, 26, 1, 22], [13, 30, 24, 28], [13, 40, 21, 47], [13, 44, 5, 50], [13, 20, 2, 12]].forEach(([x0, y0, x1, y1], k) => {
+      const mx = (x0 + x1) / 2 + (jit(k, f, 3) - 0.5) * 3, my = (y0 + y1) / 2 + (k % 2 ? 2 : -2);
+      p.line(x0, y0, mx, my, '#3a0810').line(mx, my, x1, y1, '#3a0810');
+    });
+    for (let y = 2; y < 50; y++) {
+      const t = (y - 2) / 47, w = 8.5 * Math.pow(Math.sin(Math.PI * t), 0.7) + (jit(y, f, 0) - 0.5) * 2.4, cx = 13 + Math.sin(y * 0.5 + f * 2.1) * 0.8;
+      for (let x = Math.floor(cx - w); x <= Math.ceil(cx + w); x++) {
+        const d = Math.abs(x + 0.5 - cx);
+        if (d > w) continue;
+        const e = w - d;                                               // distance in from the edge
+        p.set(x, y, e < 1.2 ? '#6a0c18' : e < 2.4 ? '#c81e30' : e < 3.4 ? '#ff5a48' : e < 4.2 ? '#ffb08a' : (jit(x + y * 7, f, 5) < 0.12 ? '#5a0a1a' : '#14020a'));
+      }
+    }
+    return p;
+  });
+}
+
+export function shadowBlob() { return new Pix(14, 6).ellipse(7, 3, 7, 3, '#000000'); }
+export function spark() { return new Pix(5, 5).rect(2, 0, 1, 5, '#ffffff').rect(0, 2, 5, 1, '#ffffff'); }
+export function smoke() { return new Pix(6, 6).ellipse(3, 3, 3, 3, '#ffffff').set(1, 1, '#ffffff'); }
+export function psyBolt() { return new Pix(7, 7).ellipse(3.5, 3.5, 3.5, 3.5, '#d94adf').ellipse(3.5, 3.5, 2, 2, '#ffb8ff').set(3, 3, '#ffffff'); }
+
+export function coin() {
+  const p = new Pix(9, 9).ellipse(4.5, 4.5, 4.5, 4.5, C.gold).ellipse(4.5, 4.5, 2.6, 2.6, '#f4cf6a');
+  p.rect(4, 2, 1, 5, C.goldD).set(2, 2, '#fff0b4').set(3, 1, '#fff0b4');
+  return p.outline();
+}
+export function heart() {
+  const p = new Pix(9, 8);
+  ['.11.11.', '1111111', '1111111', '.11111.', '..111..', '...1...'].forEach((row, y) => [...row].forEach((v, x) => { if (v === '1') p.set(x + 1, y + 1, '#e83a4a'); }));
+  p.set(2, 2, '#ff9aa4').set(3, 2, '#ff9aa4').set(2, 3, '#ff9aa4');
+  return p.outline();
 }
