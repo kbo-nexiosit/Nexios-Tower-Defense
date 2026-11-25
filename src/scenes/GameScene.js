@@ -398,16 +398,16 @@ export default class GameScene extends Phaser.Scene {
 
   drawBuildings() {
     this.add.text(MEDIA.x + MEDIA.w / 2, MEDIA.y + 14, 'DPG MEDIA', { fontFamily: PIXEL_FONT, fontSize: '11px', color: '#e8e8f0' }).setOrigin(0.5).setDepth(3);
-    const logo = this.add.image(OFFICE.x + OFFICE.w / 2, OFFICE.y - 14, 'logo').setDepth(3);
-    logo.setScale(Math.min(150 / logo.width, 26 / logo.height));
+    const logo = this.add.image(OFFICE.x + 62, OFFICE.y - 14, 'logo').setDepth(3);
+    logo.setScale(Math.min(118 / logo.width, 24 / logo.height));
     this.setupBart();
     this.officeFlash = this.add.rectangle(OFFICE.x + OFFICE.w / 2, OFFICE.y + OFFICE.h / 2, OFFICE.w, OFFICE.h, 0xff0000, 0).setDepth(3);
   }
 
   // Bart, the friendly guy on the NexiosIT roof: waves hello, rings the bell, cheers, despairs.
   setupBart() {
-    const x = OFFICE.x + OFFICE.w - 22, y = OFFICE.y - 44;
-    this.roofBell = this.add.image(x - 34, y + 8, 'bell').setScale(0.55).setDepth(3.3).setOrigin(0.5, 0.1);
+    const x = OFFICE.x + OFFICE.w - 16, y = OFFICE.y - 28;
+    this.roofBell = this.add.image(x - 30, y - 2, 'bell').setScale(0.45).setDepth(3.3).setOrigin(0.5, 0.1);
     this.bart = this.add.sprite(x, y, 'bart', 0).setDepth(3.4);
     this.bartY = y;
     const arms = (times, gap = 220) => { for (let i = 0; i < times * 2; i++) this.time.delayedCall(i * gap, () => this.bart.active && this.bart.setFrame(i % 2 ? 0 : 1)); };
