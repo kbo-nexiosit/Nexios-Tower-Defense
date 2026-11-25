@@ -5,3 +5,4 @@ test('leaky wave grants nothing', () => { const s = createSword(); s.onWaveClear
 test('max one charge', () => { const s = createSword(); s.onWaveCleared(0); s.onWaveCleared(0); assert.equal(s.charges, 1); });
 test('use consumes', () => { const s = createSword(); s.onWaveCleared(0); assert.equal(s.use(), true); assert.equal(s.use(), false); });
 test('onWaveCleared reports a new grant', () => { const s = createSword(); assert.equal(s.onWaveCleared(0), true); assert.equal(s.onWaveCleared(0), false); });
+test('a wave cleared with the sword does not re-grant it', () => { const s = createSword(); s.onWaveCleared(0); s.use(); assert.equal(s.onWaveCleared(0), false); assert.equal(s.charges, 0); s.onWaveCleared(0); assert.equal(s.charges, 1); });
