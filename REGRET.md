@@ -7,3 +7,6 @@ Things that worked, then broke, and why. Bootcamp Day 5, 2026-11-25.
 - Nexios Sword cleared a whole wave, which counted as a perfect wave and handed the sword straight back (infinite sword). Fix: a wave where the sword was used never grants it.
 - Streetlight glows first shipped as flat grey discs (ADD blend on a single circle). Fix: stacked rings for a soft falloff.
 - HUD ran out of room once Pizza + Sword + Upgrade buttons existed. Fix: narrower tower buttons, "X-mas Lights" → "Lights".
+- Upside Down first rotated the board 180° (left-to-right). Owner wanted the movie feel: a bottom-to-top card flip revealing the backside. Fix: tween camera zoomY 1 → 0 → -1 (culling off), swap to vines + red tint edge-on.
+- First art pass was code-drawn circles and blocks — "immature". Fix: small pixel engine (low-res drawing + auto outline/shading, nearest-neighbour upscale), pre-rendered pixel town, animated monsters, pixel fonts.
+- Title flashlight beams pointed back at the kids (triangle origin quirk). Fix: define the tip at the left edge.
