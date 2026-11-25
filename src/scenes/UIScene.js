@@ -139,7 +139,7 @@ export default class UIScene extends Phaser.Scene {
   }
 
   banner(text, color = '#ffffff', sub = '', withBell = true) {
-    const bell = this.add.image(640, 250, 'bell').setDepth(30).setScale(2).setAngle(-25).setVisible(withBell);
+    const bell = this.add.image(640, 240, 'bell').setDepth(30).setScale(1.6).setAngle(-25).setVisible(withBell);
     const t = this.add.text(640, 340, text, { fontFamily: '"Press Start 2P", monospace', fontSize: '34px', color, fontStyle: 'bold', stroke: '#000', strokeThickness: 6 })
       .setOrigin(0.5).setDepth(30);
     const st = this.add.text(640, 392, sub, { fontFamily: '"VT323", monospace', fontSize: '27px', color: '#ffffff', stroke: '#000', strokeThickness: 4 })

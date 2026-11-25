@@ -24,7 +24,7 @@ export default class EndScene extends Phaser.Scene {
     logo.setScale(Math.min(240 / logo.width, 46 / logo.height));
     this.add.text(cx, 440, 'Your partner for software, cloud & AI solutions — and monster removal.',
       { fontFamily: '"VT323", monospace', fontSize: '22px', color: '#9aa0b8' }).setOrigin(0.5);
-    const bell = this.add.image(cx, 110, 'bell').setScale(1.6);
+    const bell = this.add.image(cx, 110, 'bell').setScale(1.3);
     this.tweens.add({ targets: bell, angle: { from: -25, to: 25 }, duration: 260, yoyo: true, repeat: 5, ease: 'Sine.easeInOut' });
     [0, 0.9, 1.8].forEach(t => sfx.bell(t));
   }

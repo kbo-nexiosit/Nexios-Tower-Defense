@@ -193,16 +193,30 @@ export function van() {
   return p.shade(1.08, 0.8).outline();
 }
 
+// Tiny 3x5 pixel font for engravings.
+const GLYPHS = {
+  V: ['1.1', '1.1', '1.1', '1.1', '.1.'], I: ['111', '.1.', '.1.', '.1.', '111'], C: ['.11', '1..', '1..', '1..', '.11'],
+  T: ['111', '.1.', '.1.', '.1.', '.1.'], O: ['111', '1.1', '1.1', '1.1', '111'], R: ['11.', '1.1', '11.', '1.1', '1.1'],
+  Y: ['1.1', '1.1', '.1.', '.1.', '.1.'],
+};
+function engrave(p, text, x, y, col) {
+  [...text].forEach((ch, k) => GLYPHS[ch].forEach((row, r) => [...row].forEach((v, c) => { if (v === '1') p.set(x + k * 4 + c, y + r, col); })));
+}
+
+// The Nexios victory bell, with VICTORY engraved on a band across the skirt.
 export function bell() {
-  const p = new Pix(24, 26);
-  p.rect(10, 0, 4, 3, C.goldD);
-  p.ellipse(12, 9, 7, 7, C.gold);
-  p.rect(5, 9, 14, 9, C.gold);
-  p.rect(2, 17, 20, 3, C.gold);
-  p.rect(7, 5, 2, 11, '#ffe9a6');                       // highlight
-  p.rect(2, 19, 20, 1, C.goldD);
-  p.ellipse(12, 22, 2.5, 2.5, C.goldD);                 // clapper
-  return p.shade(1.1, 0.7).outline();
+  const p = new Pix(36, 34);
+  p.rect(15, 0, 6, 2, C.goldD).rect(16, 2, 4, 2, C.goldD);          // crown loop
+  p.ellipse(18, 11, 10, 8, C.gold);                                  // dome
+  for (let y = 11; y < 27; y++) { const w = 10 + Math.floor((y - 11) * 0.7); p.rect(18 - w, y, w * 2, 1, C.gold); }   // flaring body
+  p.rect(1, 26, 34, 3, C.gold);                                      // lip
+  p.rect(4, 17, 28, 8, '#f0c75a');                                   // engraving band
+  p.rect(4, 16, 28, 1, C.goldD).rect(4, 25, 28, 1, C.goldD);
+  engrave(p, 'VICTORY', 5, 19, '#6e4a12');
+  p.rect(9, 6, 2, 9, '#ffe9a6');                                     // highlight
+  p.rect(1, 28, 34, 1, C.goldD);
+  p.ellipse(18, 31, 2.5, 2.5, C.goldD);                              // clapper
+  return p.shade(1.08, 0.72).outline();
 }
 
 // GoT-style longsword, pointing right. The Nexios wordmark is laid on the blade in game.
