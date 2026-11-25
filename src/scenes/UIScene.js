@@ -1,5 +1,6 @@
 import CONFIG from '../config.js';
 import { HUD_H } from './GameScene.js';
+import * as sfx from '../audio/sfx.js';
 
 const FONT = { fontFamily: 'monospace', fontSize: '16px', color: '#e8e8f0' };
 export const TOWER_INFO = [
@@ -18,12 +19,26 @@ export default class UIScene extends Phaser.Scene {
 
     this.towerButtons = TOWER_INFO.map((info, i) => this.makeTowerButton(info, 330 + i * 110));
     this.refreshButtons();
+    this.waveText.setText(`Wave 0/${CONFIG.waves.count}`);
+
+    // Start-wave button (also: SPACE).
+    this.startBtn = this.add.rectangle(1130, 28, 150, 44, 0x3a0d1f).setStrokeStyle(2, 0xff3fa4).setInteractive({ useHandCursor: true });
+    this.startTxt = this.add.text(1130, 28, '▶ START WAVE', { ...FONT, fontSize: '15px', color: '#ff3fa4' }).setOrigin(0.5);
+    this.startBtn.on('pointerdown', () => this.scene.get('Game').startWave());
+    this.tweens.add({ targets: this.startTxt, alpha: 0.5, duration: 500, yoyo: true, repeat: -1 });
+
+    // Mute toggle.
+    const mute = this.add.text(1246, 28, sfx.isMuted() ? '🔇' : '🔊', { fontSize: '22px' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    mute.on('pointerdown', () => { sfx.setMuted(!sfx.isMuted()); mute.setText(sfx.isMuted() ? '🔇' : '🔊'); });
 
     const ev = this.game.events;
     const on = (name, fn) => { ev.on(name, fn, this); this.events.once('shutdown', () => ev.off(name, fn, this)); };
     on('tokens', n => { this.tokens = n; this.tokensText.setText(`Tokens: ${n}`); this.refreshButtons(); });
     on('health', n => this.healthText.setText(`Office: ${n}/${CONFIG.baseHealth}`));
     on('wave', w => this.waveText.setText(`Wave ${w}/${CONFIG.waves.count}`));
+    on('waveState', active => {
+      this.startBtn.setVisible(!active); this.startTxt.setVisible(!active);
+    });
     this.tokens = 0;
     this.scene.get('Game').emitAll();   // UI starts a frame after Game; pull current values
   }

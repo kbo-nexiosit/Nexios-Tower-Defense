@@ -5,6 +5,8 @@ import { applyDamage, canPlace } from '../logic/combat.js';
 import { makeTextures, PALETTE } from '../art/textures.js';
 import { spawnEnemy, stepEnemy, removeEnemy, enemyReward, enemyLeak } from '../entities/Enemy.js';
 import { placeTower, stepTower } from '../entities/Tower.js';
+import { waveSchedule } from '../logic/waves.js';
+import * as sfx from '../audio/sfx.js';
 
 export const HUD_H = 56;
 // Areas where kids cannot stand: the HUD, the office, the DPG building, the rift.
@@ -19,10 +21,6 @@ const inRect = (p, r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= 
 export default class GameScene extends Phaser.Scene {
   constructor() { super('Game'); }
 
-  preload() {
-    this.load.image('logo', './assets/nexios-logo.webp');
-  }
-
   create() {
     makeTextures(this);
     this.wallet = createWallet(CONFIG.startTokens);
@@ -30,6 +28,11 @@ export default class GameScene extends Phaser.Scene {
     this.enemies = [];
     this.towers = [];
     this.over = false;
+    this.sfx = sfx;
+    this.wave = 0;
+    this.waveActive = false;
+    this.pendingSpawns = 0;
+    this.leaksThisWave = 0;
     this.registry.set('selected', 'slingshot');
 
     this.drawMap();
@@ -40,13 +43,54 @@ export default class GameScene extends Phaser.Scene {
     this.input.on('pointerdown', p => this.tryPlace(p));
 
     this.scene.launch('UI');
+    this.input.keyboard.on('keydown-SPACE', () => this.startWave());
     this.emitAll();
-    this.startTestStream();
+    sfx.ambient(true);
   }
 
-  // Temporary until waves exist: a steady stream of crawlers.
-  startTestStream() {
-    this.time.addEvent({ delay: 1200, loop: true, callback: () => this.enemies.push(spawnEnemy(this, 'crawler')) });
+  // Modifiers for newly spawned enemies (the Upside Down changes these).
+  spawnMods() { return { hpMult: 1, speedMult: 1 }; }
+
+  startWave() {
+    if (this.over || this.waveActive || this.wave >= CONFIG.waves.count) return;
+    this.wave++;
+    this.waveActive = true;
+    this.leaksThisWave = 0;
+    const schedule = waveSchedule(this.wave);
+    this.pendingSpawns = schedule.length;
+    for (const s of schedule) {
+      // Scene time pauses while the tab is hidden, so no burst on return.
+      this.time.delayedCall(s.atMs, () => {
+        if (this.over) return;
+        const e = spawnEnemy(this, s.type, s.hpScale, this.spawnMods());
+        this.enemies.push(e);
+        this.pendingSpawns--;
+        this.events.emit('spawned', e);
+      });
+    }
+    this.game.events.emit('wave', this.wave);
+    this.game.events.emit('waveState', true);
+  }
+
+  waveCleared() {
+    this.waveActive = false;
+    const info = { wave: this.wave, leaks: this.leaksThisWave };
+    this.events.emit('waveCleared', info);
+    this.game.events.emit('waveCleared', info);
+    sfx.bell();
+    this.banner('WAVE CLEARED', '#ffc94a');
+    if (this.wave >= CONFIG.waves.count) { this.endGame(true); return; }
+    this.game.events.emit('waveState', false);
+  }
+
+  banner(text, color = '#ffffff', sub = '') {
+    const bell = this.add.image(640, 250, 'bell').setDepth(30).setScale(2).setAngle(-25);
+    const t = this.add.text(640, 340, text, { fontFamily: 'monospace', fontSize: '48px', color, fontStyle: 'bold', stroke: '#000', strokeThickness: 6 })
+      .setOrigin(0.5).setDepth(30);
+    const st = this.add.text(640, 392, sub, { fontFamily: 'monospace', fontSize: '20px', color: '#ffffff', stroke: '#000', strokeThickness: 4 })
+      .setOrigin(0.5).setDepth(30);
+    this.tweens.add({ targets: bell, angle: 25, duration: 220, yoyo: true, repeat: 3, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: [bell, t, st], alpha: 0, delay: 1800, duration: 500, onComplete: () => { bell.destroy(); t.destroy(); st.destroy(); } });
   }
 
   emitAll() {
@@ -151,6 +195,7 @@ export default class GameScene extends Phaser.Scene {
 
   leak(e) {
     this.health = Math.max(0, this.health - enemyLeak(e));
+    this.leaksThisWave++;
     removeEnemy(e);
     this.game.events.emit('health', this.health);
     this.cameras.main.shake(150, 0.006);
@@ -162,6 +207,7 @@ export default class GameScene extends Phaser.Scene {
   endGame(won) {
     if (this.over) return;
     this.over = true;
+    sfx.ambient(false);
     this.time.delayedCall(600, () => { this.scene.stop('UI'); this.scene.start('End', { won }); });
   }
 
@@ -175,5 +221,6 @@ export default class GameScene extends Phaser.Scene {
     this.enemies = this.enemies.filter(e => e.alive);
     const hit = (t, d) => this.hit(t, d);
     for (const t of this.towers) stepTower(this, t, this.enemies, now, hit);
+    if (this.waveActive && this.pendingSpawns === 0 && this.enemies.length === 0) this.waveCleared();
   }
 }

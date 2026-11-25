@@ -1,0 +1,9 @@
+import { test } from 'node:test'; import assert from 'node:assert/strict';
+import { waveSchedule } from '../src/logic/waves.js';
+test('wave 1 crawlers only, hpScale 1', () => { const s = waveSchedule(1); assert.ok(s.length >= 6); assert.ok(s.every(x => x.type === 'crawler' && x.hpScale === 1)); });
+test('sorted by time', () => { const s = waveSchedule(5); assert.deepEqual(s.map(x=>x.atMs), [...s.map(x=>x.atMs)].sort((a,b)=>a-b)); });
+test('later waves bigger', () => assert.ok(waveSchedule(9).length > waveSchedule(2).length));
+test('wave 10 has exactly one boss at 0', () => { const b = waveSchedule(10).filter(x=>x.type==='boss'); assert.equal(b.length, 1); assert.equal(b[0].atMs, 0); });
+test('waves 1-9 have no boss', () => { for (let n=1;n<10;n++) assert.ok(!waveSchedule(n).some(x=>x.type==='boss')); });
+test('brutes from 3, swarms from 5', () => { assert.ok(!waveSchedule(2).some(x=>x.type==='brute')); assert.ok(waveSchedule(3).some(x=>x.type==='brute')); assert.ok(!waveSchedule(4).some(x=>x.type==='swarm')); assert.ok(waveSchedule(5).some(x=>x.type==='swarm')); });
+test('hpScale grows', () => assert.ok(Math.abs(waveSchedule(3)[0].hpScale - 1.24) < 1e-9));

@@ -1,3 +1,5 @@
+import * as sfx from '../audio/sfx.js';
+
 export default class EndScene extends Phaser.Scene {
   constructor() { super('End'); }
 
@@ -16,5 +18,14 @@ export default class EndScene extends Phaser.Scene {
     btn.on('pointerdown', () => this.scene.start('Game'));
   }
 
-  extra() {}
+  extra(won, cx) {
+    if (!won) return;
+    const logo = this.add.image(cx, 390, 'logo');
+    logo.setScale(Math.min(240 / logo.width, 46 / logo.height));
+    this.add.text(cx, 440, 'Your partner for software, cloud & AI solutions — and monster removal.',
+      { fontFamily: 'monospace', fontSize: '16px', color: '#9aa0b8' }).setOrigin(0.5);
+    const bell = this.add.image(cx, 110, 'bell').setScale(1.6);
+    this.tweens.add({ targets: bell, angle: { from: -25, to: 25 }, duration: 260, yoyo: true, repeat: 5, ease: 'Sine.easeInOut' });
+    [0, 0.9, 1.8].forEach(t => sfx.bell(t));
+  }
 }

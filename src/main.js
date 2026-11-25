@@ -1,4 +1,5 @@
 import CONFIG from './config.js';
+import TitleScene from './scenes/TitleScene.js';
 import GameScene from './scenes/GameScene.js';
 import UIScene from './scenes/UIScene.js';
 import EndScene from './scenes/EndScene.js';
@@ -17,7 +18,7 @@ export const game = new Phaser.Game({
   backgroundColor: '#0b0b14',
   render: { maxTextures: 1 },
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [GameScene, UIScene, EndScene],
+  scene: [TitleScene, GameScene, UIScene, EndScene],
 });
 
 // If WebGL dies on startup anyway, reload once in Canvas mode.
