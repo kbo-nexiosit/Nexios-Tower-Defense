@@ -25,11 +25,13 @@ export default class UIScene extends Phaser.Scene {
     this.add.image(22, 42, 'heart');
     this.tokensText = this.add.text(40, 5, '', { ...FONT, color: '#ffb627', fontSize: '24px' });
     this.healthText = this.add.text(40, 31, '', { ...FONT, color: '#6bff6b' });
-    this.waveText = this.add.text(150, 32, '', { ...FONT, color: '#ff8fc8' });
+    this.waveText = this.add.text(118, 33, '', { ...FONT, fontSize: '20px', color: '#ff8fc8' });
 
     this.towerButtons = TOWER_INFO.map((info, i) => this.makeTowerButton(info, 300 + i * 100));
     this.refreshButtons();
-    this.waveText.setText(`Wave 0/${CONFIG.waves.count}`);
+    this.waveText.setText('LV1 · WAVE 0/1');
+    this.nextBossText = this.add.text(12, 60, '', { ...FONT, fontSize: '18px', color: '#ff6a6a', stroke: '#000', strokeThickness: 3 });
+    this.bossNameText = this.add.text(640, 76, '', { ...FONT, fontSize: '16px', color: '#ffffff', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5).setDepth(2).setVisible(false);
 
     // Start-wave button (also: SPACE).
     this.startBtn = this.add.rectangle(1112, 28, 150, 44, 0x3a0d1f).setStrokeStyle(2, 0xff3fa4).setInteractive({ useHandCursor: true });
@@ -94,10 +96,14 @@ export default class UIScene extends Phaser.Scene {
       this.tokens = n; this.tokensText.setText(`${n} tokens`); this.refreshButtons(); this.refreshUpgrade();
     });
     on('health', n => this.healthText.setText(`${n}/${CONFIG.baseHealth}`).setColor(n > CONFIG.baseHealth * 0.5 ? '#6bff6b' : n > CONFIG.baseHealth * 0.25 ? '#ffd84a' : '#ff4a4a'));
-    on('wave', w => this.waveText.setText(`Wave ${w}/${CONFIG.waves.count}`));
+    on('run', r => {
+      this.waveText.setText(r.bossStage ? `LV${r.level} · BOSS` : `LV${r.level} · WAVE ${r.waveInLevel}/${r.waves}`);
+      this.nextBossText.setText((r.bossStage ? 'Boss: ' : 'Next boss: ') + r.bossName + (r.bosses ? `   •   bosses beaten: ${r.bosses}` : ''));
+    });
+    on('bossName', n => this.bossNameText.setText(n));
     on('bossHp', (hp, max) => {
       const show = hp > 0;
-      this.bossBarBg.setVisible(show); this.bossBar.setVisible(show);
+      this.bossBarBg.setVisible(show); this.bossBar.setVisible(show); this.bossNameText.setVisible(show);
       this.bossBar.width = 600 * Math.max(0, hp / max);
     });
     on('sword', n => this.setSword(n));
@@ -123,6 +129,7 @@ export default class UIScene extends Phaser.Scene {
     this.tokens = 0;
     this.scene.get('Game').emitAll();   // UI starts a frame after Game; pull current values
     this.scene.get('Game').emitShapes();
+    this.scene.get('Game').emitRun();
   }
 
   makeTowerButton(info, x) {

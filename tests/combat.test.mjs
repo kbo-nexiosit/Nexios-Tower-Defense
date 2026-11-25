@@ -24,3 +24,8 @@ test('inRangeOfAny finds enemies near any edge', () => {
   const e1 = { ...makeEnemyState('crawler'), x: 0, y: 50 }, e2 = { ...makeEnemyState('crawler'), x: 500, y: 0 };
   assert.deepEqual(inRangeOfAny([{ x: 0, y: 0 }], 60, [e1, e2]), [e1]);
 });
+test('untargetable bosses (offline / shielded) are never picked', () => {
+  const e = { ...makeEnemyState('boss'), x: 0, y: 0, distance: 9, untargetable: true };
+  assert.equal(pickTargetFrom([{ x: 0, y: 0 }], 100, [e]), null);
+  assert.deepEqual(inRangeOfAny([{ x: 0, y: 0 }], 100, [e]), []);
+});

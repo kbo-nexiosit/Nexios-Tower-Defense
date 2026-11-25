@@ -86,7 +86,7 @@ export function sauce(e, now) {
 export function pickTargetFrom(origins, range, enemies) {
   let best = null;
   for (const e of enemies) {
-    if (!e.alive) continue;
+    if (!e.alive || e.untargetable) continue;
     let near = null, nd = Infinity;
     for (const o of origins) { const d = Math.hypot(e.x - o.x, e.y - o.y); if (d < nd) { nd = d; near = o; } }
     if (!near || nd > range) continue;
@@ -96,5 +96,5 @@ export function pickTargetFrom(origins, range, enemies) {
 }
 
 export function inRangeOfAny(origins, range, enemies) {
-  return enemies.filter(e => e.alive && origins.some(o => Math.hypot(e.x - o.x, e.y - o.y) <= range));
+  return enemies.filter(e => e.alive && !e.untargetable && origins.some(o => Math.hypot(e.x - o.x, e.y - o.y) <= range));
 }

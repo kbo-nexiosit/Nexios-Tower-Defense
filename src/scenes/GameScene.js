@@ -6,11 +6,13 @@ import { makeMazeGround, makeVignette, makeGlow } from '../art/environment.js';
 import { spawnEnemy, stepEnemy, removeEnemy, enemyReward, enemyLeak, enemyCells } from '../entities/Enemy.js';
 import { placeBlock as placeBlockEntity, refreshBlock, stepTower, upgradeTowerStats } from '../entities/Tower.js';
 import { spawnVan, stepVan } from '../entities/PizzaVan.js';
+import { BEHAVIOUR } from '../entities/bosses.js';
 import { crossedThresholds } from '../logic/boss.js';
 import { createSword } from '../logic/sword.js';
 import { rollFlip, flipModifiers } from '../logic/flip.js';
 import { waveSchedule, clearBonus } from '../logic/waves.js';
-import { createGrid, setObstacles, placeBlock as placeOnGrid, distanceField, canPlace, routeFrom } from '../logic/grid.js';
+import { bossFor, bossHp, levelWaves } from '../logic/run.js';
+import { createGrid, setObstacles, placeBlock as placeOnGrid, distanceField, canPlace, routeFrom, routeWith } from '../logic/grid.js';
 import { SHAPES, createBag, cellsAt, rotate } from '../logic/tetromino.js';
 import * as sfx from '../audio/sfx.js';
 
@@ -52,13 +54,21 @@ export default class GameScene extends Phaser.Scene {
     this.vans = [];
     this.boss = null;
     this.sfx = sfx;
-    this.wave = 0;
+    this.wave = 0;             // waves played in the whole run (drives difficulty)
+    this.level = 1;            // level N = N waves, then a boss
+    this.waveInLevel = 0;
+    this.bossStage = false;
+    this.bossesBeaten = 0;
+    this.wavesCleared = 0;
     this.waveActive = false;
     this.pendingSpawns = 0;
     this.leaksThisWave = 0;
 
     this.drawMap();
     this.routeGfx = this.add.graphics().setDepth(0.6);
+    // Where the route would go if the hovering block were dropped.
+    this.previewGfx = this.add.graphics().setDepth(0.7);
+    this.previewTxt = this.add.text(0, 0, '', { fontFamily: '"VT323", monospace', fontSize: '20px', color: '#8ff0ff', stroke: '#000', strokeThickness: 4 }).setOrigin(0.5, 1).setDepth(20.1).setVisible(false);
     this.ghost = [0, 1, 2, 3].map(() => this.add.rectangle(0, 0, M.cell - 2, M.cell - 2, 0xffffff, 0.35).setStrokeStyle(2, 0xffffff, 0.8).setDepth(20).setVisible(false));
     this.rangeGfx = this.add.graphics().setDepth(3.95);
     this.drawRoute();
@@ -79,10 +89,11 @@ export default class GameScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-P', () => this.callPizza());
     if (new URLSearchParams(location.search).has('debug')) {
       // Debug: B jumps straight to the boss wave.
-      this.input.keyboard.on('keydown-B', () => { if (!this.waveActive) { this.wave = CONFIG.waves.count - 1; this.wallet.earn(2000); this.emitAll(); this.startWave(); } });
+      this.input.keyboard.on('keydown-B', () => { if (!this.waveActive) { this.waveInLevel = levelWaves(this.level); this.wallet.earn(2000); this.emitAll(); this.startWave(); } });
     }
     this.emitAll();
     this.emitShapes();
+    this.emitRun();
     sfx.upsideDrone(false);
     sfx.musicStart();
 
@@ -126,6 +137,7 @@ export default class GameScene extends Phaser.Scene {
       this.coldLayer.setAlpha(1); this.redLayer.setAlpha(0.18); this.vines.setAlpha(1);
       this.ash.start();
       this.fireflies.stop(); this.fireflies.setVisible(false);
+      this.previewTxt.setVisible(false);   // it would read mirrored on the backside
     });
     this.lightning = this.time.addEvent({ delay: 2600, loop: true, callback: () => {
       if (!this.upside || Math.random() < 0.4) return;
@@ -177,29 +189,41 @@ export default class GameScene extends Phaser.Scene {
   // Modifiers for newly spawned enemies (the Upside Down changes these).
   spawnMods() { return flipModifiers(this.upside); }
 
+  // SPACE: the next wave of this level, or — once they're all done — the boss.
   startWave() {
-    if (this.over || this.waveActive || this.wave >= CONFIG.waves.count) return;
-    this.wave++;
+    if (this.over || this.waveActive) return;
     this.waveActive = true;
     this.leaksThisWave = 0;
-    const schedule = waveSchedule(this.wave);
+    this.bossDefeated = false;
+    const hpScale = 1 + CONFIG.waves.hpScalePerWave * this.wave;
+    let schedule;
+    if (this.waveInLevel < levelWaves(this.level)) {
+      this.waveInLevel++; this.wave++; this.bossStage = false;
+      schedule = waveSchedule(Math.min(this.wave, CONFIG.waves.count - 1)).map(x => ({ ...x, hpScale }));
+    } else {
+      this.bossStage = true;
+      schedule = [{ type: 'boss', atMs: 0, hpScale: 1 }, ...[0, 1, 2, 3].map(i => ({ type: 'crawler', atMs: 2500 + i * 900, hpScale }))];
+    }
     this.pendingSpawns = schedule.length;
     for (const s of schedule) {
       // Scene time pauses while the tab is hidden, so no burst on return.
       this.time.delayedCall(s.atMs, () => {
         if (this.over || this.bossDefeated) { this.pendingSpawns--; return; }
-        const e = spawnEnemy(this, s.type, s.hpScale, this.spawnMods());
+        const e = spawnEnemy(this, s.type, s.hpScale, this.spawnMods(), s.type === 'boss' ? bossFor(this.level).key : null);
         if (e.type === 'boss') this.bossEntrance(e);
         this.enemies.push(e);
         this.pendingSpawns--;
         this.events.emit('spawned', e);
       });
     }
-    this.game.events.emit('wave', this.wave);
-    if (this.wave === 1) this.tip('Drop blocks to build a maze (R rotates), then pick a kid for each block.');
-    if (this.wave === 3) this.tip('Only edge squares fire — squares walled in by other blocks go quiet.');
-    if (this.wave === CONFIG.waves.count) this.tip('Something big is coming through the Rift…');
+    this.emitRun();
+    if (this.wave === 1 && !this.bossStage) this.tip('Drop blocks to build a maze (R rotates), then pick a kid for each block.');
+    if (this.wave === 3 && !this.bossStage) this.tip('Only edge squares fire — squares walled in by other blocks go quiet.');
     this.game.events.emit('waveState', true);
+  }
+
+  emitRun() {
+    this.game.events.emit('run', { level: this.level, waveInLevel: this.waveInLevel, waves: levelWaves(this.level), bossName: bossFor(this.level).name, bossStage: this.bossStage, bosses: this.bossesBeaten });
   }
 
   waveCleared() {
@@ -209,19 +233,32 @@ export default class GameScene extends Phaser.Scene {
     this.events.emit('waveCleared', info);
     this.game.events.emit('waveCleared', info);
     sfx.bell();
-    const bonus = clearBonus(this.wave);
+    const bonus = clearBonus(Math.min(this.wave, 12));
     this.wallet.earn(bonus);
     this.game.events.emit('tokens', this.wallet.tokens);
-    this.banner('WAVE CLEARED', '#ffc94a', `+${bonus} tokens`);
+    if (this.bossStage) {
+      // Level done: repair the office, bring on the next level (the maze stays).
+      const beaten = bossFor(this.level).name;
+      this.bossesBeaten++;
+      this.health = Math.min(CONFIG.baseHealth, this.health + 5);
+      this.game.events.emit('health', this.health);
+      this.level++; this.waveInLevel = 0; this.bossStage = false;
+      this.events.emit('bossBeaten');
+      this.banner(beaten.toUpperCase() + ' DEFEATED', '#6bff6b', `+${bonus} tokens  •  office repaired +5`);
+      this.time.delayedCall(2600, () => { if (!this.over) this.banner(`LEVEL ${this.level}`, '#ff3fa4', `${bossFor(this.level).name} is coming — ${levelWaves(this.level)} waves first. SPACE when ready`, false); });
+    } else {
+      this.wavesCleared++;
+      this.banner('WAVE CLEARED', '#ffc94a', `+${bonus} tokens`);
+    }
     if (this.sword.onWaveCleared(this.leaksThisWave)) {
       this.game.events.emit('sword', this.sword.charges);
-      this.time.delayedCall(2300, () => {
+      this.time.delayedCall(this.bossesBeaten && this.waveInLevel === 0 ? 5200 : 2300, () => {
         if (this.over) return;
         this.banner('PERFECT WAVE', '#dfe6ee', 'THE NEXIOS SWORD IS YOURS — press S', false);
         this.ui.swordSprite(640, 470, 1.4).setAlpha(0).setDepth(31);
       });
     }
-    if (this.wave >= CONFIG.waves.count) { this.endGame(true); return; }
+    this.emitRun();
     this.game.events.emit('waveState', false);
   }
 
@@ -259,7 +296,12 @@ export default class GameScene extends Phaser.Scene {
   }
 
   bossEntrance(e) {
+    const b = bossFor(this.level);
+    e.bossKey = b.key; e.bossName = b.name;
+    e.maxHp = e.hp = bossHp(this.level);
     this.boss = e;
+    this.banner(b.name.toUpperCase(), '#ff2a3a', b.lap ? `returns — lap ${b.lap + 1}, tougher than ever` : 'has entered the building', false);
+    this.game.events.emit('bossName', b.name);
     sfx.boss();
     this.cameras.main.shake(900, 0.012);
     this.cameras.main.flash(400, 120, 0, 0);
@@ -267,9 +309,9 @@ export default class GameScene extends Phaser.Scene {
     this.game.events.emit('bossHp', e.hp, e.maxHp);
   }
 
-  bossPhase() {
+  bossPhase(th, e) {
     this.events.emit('bossPhase');
-    this.triggerFlip();   // each boss phase drags the town into the Upside Down
+    if (e?.alive) BEHAVIOUR[e.bossKey]?.onPhase?.(this, e, th);
     sfx.boss();
     this.cameras.main.shake(500, 0.01);
     this.cameras.main.flash(300, 160, 0, 30);
@@ -360,9 +402,34 @@ export default class GameScene extends Phaser.Scene {
 
   drawBuildings() {
     this.add.text(MEDIA.x + MEDIA.w / 2, MEDIA.y + 14, 'DPG MEDIA', { fontFamily: PIXEL_FONT, fontSize: '11px', color: '#e8e8f0' }).setOrigin(0.5).setDepth(3);
-    const logo = this.add.image(OFFICE.x + OFFICE.w / 2, OFFICE.y - 14, 'logo').setDepth(3);
-    logo.setScale(Math.min(150 / logo.width, 26 / logo.height));
+    const logo = this.add.image(OFFICE.x + 54, OFFICE.y - 14, 'logo').setDepth(3);
+    logo.setScale(Math.min(108 / logo.width, 22 / logo.height));
+    this.setupBart();
     this.officeFlash = this.add.rectangle(OFFICE.x + OFFICE.w / 2, OFFICE.y + OFFICE.h / 2, OFFICE.w, OFFICE.h, 0xff0000, 0).setDepth(3);
+  }
+
+  // Bart, the friendly guy on the NexiosIT roof: waves hello, rings the bell, cheers, despairs.
+  setupBart() {
+    const x = OFFICE.x + OFFICE.w - 16, y = OFFICE.y - 28;
+    this.roofBell = this.add.image(x - 26, y - 2, 'bell').setScale(0.4).setDepth(3.3).setOrigin(0.5, 0.1);
+    this.bart = this.add.sprite(x, y, 'bart', 0).setDepth(3.4);
+    this.bartY = y;
+    const arms = (times, gap = 220) => { for (let i = 0; i < times * 2; i++) this.time.delayedCall(i * gap, () => this.bart.active && this.bart.setFrame(i % 2 ? 0 : 1)); };
+    arms(4);                                                                  // hello!
+    this.events.on('waveCleared', () => {
+      this.tweens.add({ targets: this.roofBell, angle: { from: -30, to: 30 }, duration: 160, yoyo: true, repeat: 3, onComplete: () => this.roofBell.setAngle(0) });
+      arms(2, 260);
+    });
+    this.events.on('bossBeaten', () => {
+      this.bart.setFrame(1);
+      this.tweens.add({ targets: this.bart, y: this.bartY - 14, duration: 160, yoyo: true, repeat: 3, onComplete: () => this.bart.setFrame(0) });
+    });
+  }
+
+  bartDespair() {
+    if (!this.bart?.active) return;
+    this.bart.setTint(0x8aa8ff).setFrame(0);
+    this.tweens.add({ targets: this.bart, x: this.bart.x + 2, duration: 50, yoyo: true, repeat: 3, onComplete: () => this.bart.clearTint() });
   }
 
   // The monsters' current route, worn into the grass as a dirt trail.
@@ -378,8 +445,40 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  // Pointer in world space (the camera is mirrored in the Upside Down).
-  worldPoint(p) { return { x: p.worldX, y: p.worldY }; }
+  clearRoutePreview() { this.previewGfx.clear(); this.previewTxt.setVisible(false); this.routeGfx.setAlpha(1); }
+
+  // Dashed preview of the detour the monsters would take if `cells` became a block.
+  // Nothing is shown when the block wouldn't change their route.
+  drawRoutePreview(cells) {
+    this.clearRoutePreview();
+    const now = routeFrom(this.grid, this.dist, M.spawn);
+    const next = routeWith(this.grid, cells, M.spawn, M.goal);
+    if (!next || (next.length === now.length && next.every((c, i) => c[0] === now[i][0] && c[1] === now[i][1]))) return;
+    const pts = next.map(c => this.cellCenter(c)), g = this.previewGfx;
+    this.routeGfx.setAlpha(0.45);                                 // the old trail fades back
+    for (const [w, col, a] of [[9, 0x06141a, 0.55], [4, 0x8ff0ff, 0.95]]) {
+      g.lineStyle(w, col, a);
+      for (let i = 1; i < pts.length; i++) {
+        const a0 = pts[i - 1], b0 = pts[i];
+        g.lineBetween(a0.x + (b0.x - a0.x) * 0.2, a0.y + (b0.y - a0.y) * 0.2, a0.x + (b0.x - a0.x) * 0.8, a0.y + (b0.y - a0.y) * 0.8);
+      }
+    }
+    // How much longer (or shorter) the walk gets, shown above the block.
+    const extra = next.length - now.length;
+    if (extra !== 0 && !this.upside) {
+      const top = cells.map(c => this.cellCenter(c)).reduce((m, p) => (p.y < m.y ? p : m));
+      const cx = cells.reduce((s, c) => s + this.cellCenter(c).x, 0) / cells.length;
+      this.previewTxt.setText((extra > 0 ? '+' : '') + extra + ' steps').setColor(extra > 0 ? '#8ff0ff' : '#ff8a8a').setPosition(cx, top.y - M.cell / 2 - 2).setVisible(true);
+    }
+  }
+
+  // Pointer in world space. In the Upside Down the vertical mouse axis is inverted: the board is
+  // mirrored on screen but the pointer is mapped as if it weren't, so the block moves opposite to the mouse.
+  worldPoint(p) {
+    const cam = this.cameras.main;
+    if (!CONFIG.flip.invertMouseY || cam.zoomY >= 0) return { x: p.worldX, y: p.worldY };
+    return { x: p.worldX, y: 2 * (cam.scrollY + cam.height / 2) - p.worldY };
+  }
   // While the board is nearly edge-on, clicks can't be mapped sensibly.
   midFlip() { return Math.abs(this.cameras.main.zoomY) < 0.5; }
 
@@ -408,12 +507,13 @@ export default class GameScene extends Phaser.Scene {
 
   updateGhost(p) {
     if (this.picking) return;
-    if (p.y < HUD_H || this.over) { this.ghost.forEach(g => g.setVisible(false)); return; }
+    if (p.y < HUD_H || this.over) { this.ghost.forEach(g => g.setVisible(false)); this.clearRoutePreview(); return; }
     const cells = this.pieceCells(p);
     const onBlock = cells.length && this.blockAt(this.cellAt(this.worldPoint(p)));
     const res = this.placementCheck(cells);
     this.showGhost(cells, res.ok ? 0x6bff6b : 0xff3030);
     this.ghost.forEach(g => g.setAlpha(onBlock ? 0.25 : 1));
+    if (res.ok || res.reason === 'tokens') this.drawRoutePreview(cells); else this.clearRoutePreview();
     this.lastPointer = p;
   }
 
@@ -449,6 +549,7 @@ export default class GameScene extends Phaser.Scene {
     if (!this.picking) return;
     this.picking = null;
     this.ghost.forEach(g => g.setVisible(false));
+    this.clearRoutePreview();
     this.game.events.emit('picking', false);
     if (this.lastPointer) this.updateGhost(this.lastPointer);
   }
@@ -483,6 +584,7 @@ export default class GameScene extends Phaser.Scene {
   recomputeMaze() {
     this.dist = distanceField(this.grid, M.goal);
     this.towers.forEach(b => refreshBlock(this, b));
+    this.clearRoutePreview();
     this.drawRoute();
   }
 
@@ -508,6 +610,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   hit(target, damage) {
+    if (target.untargetable) return;   // offline Cloud / shielded BSOD
     const prevHp = target.hp;
     target.flashUntil = this.now + 70;
     const { killed } = applyDamage(target, damage, this.now);
@@ -517,7 +620,7 @@ export default class GameScene extends Phaser.Scene {
   // Shared bookkeeping after any damage: boss phases, rewards, removal.
   afterDamage(target, prevHp, killed) {
     if (target.type === 'boss') {
-      crossedThresholds(prevHp, target.hp, target.maxHp).forEach(() => this.bossPhase());
+      crossedThresholds(prevHp, target.hp, target.maxHp).forEach(th => this.bossPhase(th, target));
       this.game.events.emit('bossHp', Math.max(0, target.hp), target.maxHp);
       if (killed) { this.bossDefeat(target); removeEnemy(target); return; }
     }
@@ -558,6 +661,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   leak(e) {
+    this.bartDespair();
     this.health = Math.max(0, this.health - enemyLeak(e));
     this.leaksThisWave++;
     removeEnemy(e);
@@ -573,7 +677,7 @@ export default class GameScene extends Phaser.Scene {
     this.over = true;
     sfx.upsideDrone(false);
     sfx.musicStop();
-    this.time.delayedCall(600, () => { this.scene.stop('UI'); this.scene.start('End', { won, wave: this.wave }); });
+    this.time.delayedCall(600, () => { this.scene.stop('UI'); this.scene.start('End', { won, wave: this.wave, score: { bosses: this.bossesBeaten, waves: this.wavesCleared } }); });
   }
 
   update(time, delta) {
@@ -585,13 +689,15 @@ export default class GameScene extends Phaser.Scene {
     for (const van of this.vans) {
       for (const e of stepVan(this, van, dt, this.enemies)) {
         const prevHp = e.hp;
+        if (e.untargetable) continue;
         const { killed } = sauce(e, now);
         sfx.splat();
         this.afterDamage(e, prevHp, killed);
       }
     }
     this.vans = this.vans.filter(v => !v.done);
-    for (const e of this.enemies) {
+    for (const e of [...this.enemies]) {
+      if (e.alive && e.bossKey) { e.age += dt; BEHAVIOUR[e.bossKey]?.update?.(this, e, dt); }
       if (e.alive && stepEnemy(this, e, dt, now)) this.leak(e);
     }
     this.enemies = this.enemies.filter(e => e.alive);

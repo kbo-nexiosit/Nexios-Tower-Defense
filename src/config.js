@@ -23,11 +23,12 @@ const CONFIG = {
     brute:   { hp: 90, speed: 42,  reward: 9, leak: 3 },
     swarm:   { hp: 10, speed: 55, reward: 2, leak: 1 },     // flies straight over the maze
     boss:    { hp: 4000, speed: 9, reward: 0, leak: 20 },     // flies straight over the maze
+    mini:    { hp: 100, speed: 14, reward: 0, leak: 4 },      // The Big 5 IT's split-offs
   },
   waves: { count: 10, hpScalePerWave: 0.12, gapMs: 700, clearBonusBase: 10, clearBonusPerWave: 3 },
   boss: { thresholds: [0.75, 0.5, 0.25] },
   sword: { bossDamagePct: 0.15 },
-  flip: { firstWave: 3, rollEveryMs: 10000, chancePerWave: 0.04, maxChance: 0.35, durationMs: 25000, warnMs: 1000, hpMult: 1.5, speedMult: 1.3 },
+  flip: { firstWave: 3, rollEveryMs: 10000, chancePerWave: 0.04, maxChance: 0.35, durationMs: 25000, warnMs: 1000, hpMult: 1.5, speedMult: 1.3, invertMouseY: true },
   pizza: { cost: 50, cooldownMs: 20000, speed: 160, radius: 40, damage: 15, saucedMs: 4000, saucedSpeedMult: 0.6, saucedDamageMult: 1.5 },
 };
 export default CONFIG;

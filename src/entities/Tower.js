@@ -42,7 +42,7 @@ const BOSS_MIN_SLOW = 0.75;
 
 // Fires if ready. `hit(target, damage)` applies damage and pays rewards.
 export function stepTower(scene, t, enemies, now, hit) {
-  if (!t.edges.length) return;
+  if (!t.edges.length || now < (t.jammedUntil || 0)) return;   // netted by Sir .Net
   const every = t.fireMs ?? t.pulseMs;
   if (now - t.lastFire < every) return;
 

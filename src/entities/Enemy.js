@@ -2,20 +2,26 @@ import CONFIG from '../config.js';
 import { makeEnemyState, effectiveSpeed } from '../logic/combat.js';
 import { nextCell, distAt } from '../logic/grid.js';
 
-const FLYERS = new Set(['swarm', 'boss']);
+const FLYERS = new Set(['swarm', 'boss', 'mini']);
 
 // An enemy is its logic state (pure data) plus a sprite and a health bar.
 // Walkers follow the maze cell by cell; flyers (bats, the boss) go straight over it.
-export function spawnEnemy(scene, type, hpScale = 1, mods = { hpMult: 1, speedMult: 1 }) {
+export function spawnEnemy(scene, type, hpScale = 1, mods = { hpMult: 1, speedMult: 1 }, bossKey = null) {
   const e = makeEnemyState(type, hpScale * mods.hpMult);
   e.speed *= mods.speedMult;
-  e.flying = FLYERS.has(type);
+  e.baseSpeed = e.speed;
+  e.age = 0;
+  e.bossKey = bossKey;
+  e.flying = FLYERS.has(type) && bossKey !== 'serviceBus';   // the bus drives the maze
   const s = scene.cellCenter(CONFIG.maze.spawn), g = scene.cellCenter(CONFIG.maze.goal);
   e.x = s.x; e.y = s.y;
   if (e.flying) { e.from = s; e.to = g; e.len = Math.hypot(g.x - s.x, g.y - s.y); e.flown = 0; }
   else { e.cell = [...CONFIG.maze.spawn]; e.next = nextCell(scene.grid, scene.dist, e.cell); }
-  e.sprite = scene.add.sprite(s.x, s.y, type, 0).setDepth(type === 'boss' ? 6 : 5).play(type + '-walk');
-  const shadowScale = { boss: 4.5, brute: 1.4, swarm: 0.7, crawler: 1.5 }[type];
+  const tex = bossKey ? 'boss-' + bossKey : type === 'mini' ? 'boss-big5' : type;
+  e.sprite = scene.add.sprite(s.x, s.y, tex, 0).setDepth(type === 'boss' ? 6 : 5).play(tex + '-walk');
+  if (bossKey) e.sprite.setScale(1.5);
+  if (type === 'mini') e.sprite.setScale(0.6);
+  const shadowScale = { boss: 4.5, brute: 1.4, swarm: 0.7, crawler: 1.5, mini: 1.2 }[type];
   e.shadow = scene.add.image(s.x, s.y, 'shadow').setDepth(3.8).setAlpha(e.flying ? 0.28 : 0.42).setScale(shadowScale, shadowScale * 0.9);
   if (type !== 'boss') {
     e.barBg = scene.add.rectangle(s.x, s.y - 18, 28, 6, 0x0a0a12, 0.85).setStrokeStyle(1, 0x000000, 0.9).setDepth(7);
@@ -47,7 +53,7 @@ export function stepEnemy(scene, e, dtMs, now) {
     remaining = e.next ? Math.max(0, distAt(scene.grid, scene.dist, e.next)) * CONFIG.maze.cell + Math.hypot(scene.cellCenter(e.next).x - e.x, scene.cellCenter(e.next).y - e.y) : 0;
   }
   e.distance = 100000 - remaining;   // larger = closer to the office (for targeting)
-  if (e.type === 'crawler' || e.type === 'brute') { if (e.x < px - 0.01) e.sprite.setFlipX(true); else if (e.x > px + 0.01) e.sprite.setFlipX(false); }
+  if (e.type === 'crawler' || e.type === 'brute' || e.bossKey === 'serviceBus') { if (e.x < px - 0.01) e.sprite.setFlipX(true); else if (e.x > px + 0.01) e.sprite.setFlipX(false); }
   e.sprite.setPosition(e.x, e.y);
   if (e.type === 'swarm') e.sprite.y += Math.sin(now / 90 + e.flown) * 3;
   // Walkers cast a shadow at their feet; flyers cast one further down, so they read as airborne.
@@ -80,6 +86,7 @@ export function removeEnemy(e) {
   e.bar?.destroy();
   e.barBg?.destroy();
   e.shadow?.destroy();
+  e.ring?.destroy();
 }
 
 export const enemyReward = e => CONFIG.enemies[e.type].reward;

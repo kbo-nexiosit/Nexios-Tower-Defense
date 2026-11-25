@@ -64,4 +64,15 @@ export function routeFrom(g, d, start) {
   return route;
 }
 
+// The route monsters would take from `start` if these cells became a block
+// (null if they can't be placed there or would leave no route). The grid is left unchanged.
+export function routeWith(g, cells, start, goal) {
+  if (cells.some(([c, r]) => !isOpen(g, c, r))) return null;
+  placeBlock(g, cells, 1);
+  const d = distanceField(g, goal);
+  const route = distAt(g, d, start) >= 0 ? routeFrom(g, d, start) : null;
+  placeBlock(g, cells, 0);
+  return route;
+}
+
 export const distAt = (g, d, [c, r]) => (inGrid(g, c, r) ? d[idx(g, c, r)] : -1);
