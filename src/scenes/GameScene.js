@@ -10,6 +10,7 @@ import { crossedThresholds } from '../logic/boss.js';
 import { createSword } from '../logic/sword.js';
 import { rollFlip, flipModifiers } from '../logic/flip.js';
 import { waveSchedule, clearBonus } from '../logic/waves.js';
+import { bossFor, bossHp, levelWaves } from '../logic/run.js';
 import { createGrid, setObstacles, placeBlock as placeOnGrid, distanceField, canPlace, routeFrom } from '../logic/grid.js';
 import { SHAPES, createBag, cellsAt, rotate } from '../logic/tetromino.js';
 import * as sfx from '../audio/sfx.js';
@@ -52,7 +53,12 @@ export default class GameScene extends Phaser.Scene {
     this.vans = [];
     this.boss = null;
     this.sfx = sfx;
-    this.wave = 0;
+    this.wave = 0;             // waves played in the whole run (drives difficulty)
+    this.level = 1;            // level N = N waves, then a boss
+    this.waveInLevel = 0;
+    this.bossStage = false;
+    this.bossesBeaten = 0;
+    this.wavesCleared = 0;
     this.waveActive = false;
     this.pendingSpawns = 0;
     this.leaksThisWave = 0;
@@ -79,10 +85,11 @@ export default class GameScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-P', () => this.callPizza());
     if (new URLSearchParams(location.search).has('debug')) {
       // Debug: B jumps straight to the boss wave.
-      this.input.keyboard.on('keydown-B', () => { if (!this.waveActive) { this.wave = CONFIG.waves.count - 1; this.wallet.earn(2000); this.emitAll(); this.startWave(); } });
+      this.input.keyboard.on('keydown-B', () => { if (!this.waveActive) { this.waveInLevel = levelWaves(this.level); this.wallet.earn(2000); this.emitAll(); this.startWave(); } });
     }
     this.emitAll();
     this.emitShapes();
+    this.emitRun();
     sfx.upsideDrone(false);
     sfx.musicStart();
 
@@ -177,12 +184,21 @@ export default class GameScene extends Phaser.Scene {
   // Modifiers for newly spawned enemies (the Upside Down changes these).
   spawnMods() { return flipModifiers(this.upside); }
 
+  // SPACE: the next wave of this level, or — once they're all done — the boss.
   startWave() {
-    if (this.over || this.waveActive || this.wave >= CONFIG.waves.count) return;
-    this.wave++;
+    if (this.over || this.waveActive) return;
     this.waveActive = true;
     this.leaksThisWave = 0;
-    const schedule = waveSchedule(this.wave);
+    this.bossDefeated = false;
+    const hpScale = 1 + CONFIG.waves.hpScalePerWave * this.wave;
+    let schedule;
+    if (this.waveInLevel < levelWaves(this.level)) {
+      this.waveInLevel++; this.wave++; this.bossStage = false;
+      schedule = waveSchedule(Math.min(this.wave, CONFIG.waves.count - 1)).map(x => ({ ...x, hpScale }));
+    } else {
+      this.bossStage = true;
+      schedule = [{ type: 'boss', atMs: 0, hpScale: 1 }, ...[0, 1, 2, 3].map(i => ({ type: 'crawler', atMs: 2500 + i * 900, hpScale }))];
+    }
     this.pendingSpawns = schedule.length;
     for (const s of schedule) {
       // Scene time pauses while the tab is hidden, so no burst on return.
@@ -195,11 +211,14 @@ export default class GameScene extends Phaser.Scene {
         this.events.emit('spawned', e);
       });
     }
-    this.game.events.emit('wave', this.wave);
-    if (this.wave === 1) this.tip('Drop blocks to build a maze (R rotates), then pick a kid for each block.');
-    if (this.wave === 3) this.tip('Only edge squares fire — squares walled in by other blocks go quiet.');
-    if (this.wave === CONFIG.waves.count) this.tip('Something big is coming through the Rift…');
+    this.emitRun();
+    if (this.wave === 1 && !this.bossStage) this.tip('Drop blocks to build a maze (R rotates), then pick a kid for each block.');
+    if (this.wave === 3 && !this.bossStage) this.tip('Only edge squares fire — squares walled in by other blocks go quiet.');
     this.game.events.emit('waveState', true);
+  }
+
+  emitRun() {
+    this.game.events.emit('run', { level: this.level, waveInLevel: this.waveInLevel, waves: levelWaves(this.level), bossName: bossFor(this.level).name, bossStage: this.bossStage, bosses: this.bossesBeaten });
   }
 
   waveCleared() {
@@ -209,19 +228,32 @@ export default class GameScene extends Phaser.Scene {
     this.events.emit('waveCleared', info);
     this.game.events.emit('waveCleared', info);
     sfx.bell();
-    const bonus = clearBonus(this.wave);
+    const bonus = clearBonus(Math.min(this.wave, 12));
     this.wallet.earn(bonus);
     this.game.events.emit('tokens', this.wallet.tokens);
-    this.banner('WAVE CLEARED', '#ffc94a', `+${bonus} tokens`);
+    if (this.bossStage) {
+      // Level done: repair the office, bring on the next level (the maze stays).
+      const beaten = bossFor(this.level).name;
+      this.bossesBeaten++;
+      this.health = Math.min(CONFIG.baseHealth, this.health + 5);
+      this.game.events.emit('health', this.health);
+      this.level++; this.waveInLevel = 0; this.bossStage = false;
+      this.events.emit('bossBeaten');
+      this.banner(beaten.toUpperCase() + ' DEFEATED', '#6bff6b', `+${bonus} tokens  •  office repaired +5`);
+      this.time.delayedCall(2600, () => { if (!this.over) this.banner(`LEVEL ${this.level}`, '#ff3fa4', `${bossFor(this.level).name} is coming — ${levelWaves(this.level)} waves first. SPACE when ready`, false); });
+    } else {
+      this.wavesCleared++;
+      this.banner('WAVE CLEARED', '#ffc94a', `+${bonus} tokens`);
+    }
     if (this.sword.onWaveCleared(this.leaksThisWave)) {
       this.game.events.emit('sword', this.sword.charges);
-      this.time.delayedCall(2300, () => {
+      this.time.delayedCall(this.bossesBeaten && this.waveInLevel === 0 ? 5200 : 2300, () => {
         if (this.over) return;
         this.banner('PERFECT WAVE', '#dfe6ee', 'THE NEXIOS SWORD IS YOURS — press S', false);
         this.ui.swordSprite(640, 470, 1.4).setAlpha(0).setDepth(31);
       });
     }
-    if (this.wave >= CONFIG.waves.count) { this.endGame(true); return; }
+    this.emitRun();
     this.game.events.emit('waveState', false);
   }
 
@@ -259,7 +291,12 @@ export default class GameScene extends Phaser.Scene {
   }
 
   bossEntrance(e) {
+    const b = bossFor(this.level);
+    e.bossKey = b.key; e.bossName = b.name;
+    e.maxHp = e.hp = bossHp(this.level);
     this.boss = e;
+    this.banner(b.name.toUpperCase(), '#ff2a3a', b.lap ? `returns — lap ${b.lap + 1}, tougher than ever` : 'has entered the building', false);
+    this.game.events.emit('bossName', b.name);
     sfx.boss();
     this.cameras.main.shake(900, 0.012);
     this.cameras.main.flash(400, 120, 0, 0);
@@ -269,7 +306,6 @@ export default class GameScene extends Phaser.Scene {
 
   bossPhase() {
     this.events.emit('bossPhase');
-    this.triggerFlip();   // each boss phase drags the town into the Upside Down
     sfx.boss();
     this.cameras.main.shake(500, 0.01);
     this.cameras.main.flash(300, 160, 0, 30);
@@ -573,7 +609,7 @@ export default class GameScene extends Phaser.Scene {
     this.over = true;
     sfx.upsideDrone(false);
     sfx.musicStop();
-    this.time.delayedCall(600, () => { this.scene.stop('UI'); this.scene.start('End', { won, wave: this.wave }); });
+    this.time.delayedCall(600, () => { this.scene.stop('UI'); this.scene.start('End', { won, wave: this.wave, score: { bosses: this.bossesBeaten, waves: this.wavesCleared } }); });
   }
 
   update(time, delta) {
