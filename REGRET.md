@@ -10,3 +10,4 @@ Things that worked, then broke, and why. Bootcamp Day 5, 2026-11-25.
 - Upside Down first rotated the board 180° (left-to-right). Owner wanted the movie feel: a bottom-to-top card flip revealing the backside. Fix: tween camera zoomY 1 → 0 → -1 (culling off), swap to vines + red tint edge-on.
 - First art pass was code-drawn circles and blocks — "immature". Fix: small pixel engine (low-res drawing + auto outline/shading, nearest-neighbour upscale), pre-rendered pixel town, animated monsters, pixel fonts.
 - Title flashlight beams pointed back at the kids (triangle origin quirk). Fix: define the tip at the left edge.
+- The low Upside Down drone was the shared background hum, only turned down on flip-back, so it seemed to hang. Fix: separate Upside Down drone that fades to silence and stops; normal world now has its own (original) synth music.
