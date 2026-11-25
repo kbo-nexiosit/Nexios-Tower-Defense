@@ -88,9 +88,9 @@ export function sword() {
 
 export function boss() {
   if (!ready()) return;
-  tone(55, { type: 'sawtooth', dur: 2.5, vol: 0.25, attack: 0.3 });
-  tone(58, { type: 'sawtooth', dur: 2.5, vol: 0.2, attack: 0.3 });
-  tone(110, { type: 'square', dur: 2.0, vol: 0.05, attack: 0.5, at: 0.3 });
+  noise({ dur: 1.2, vol: 0.35, filter: 'bandpass', from: 900, to: 180, q: 3 });
+  tone(240, { type: 'square', dur: 1.1, vol: 0.08, to: 70 });
+  tone(253, { type: 'square', dur: 1.1, vol: 0.06, to: 74 });
 }
 
 // --- Upside Down drone: only while the board is flipped, fades to silence on the way back.
@@ -116,10 +116,10 @@ export function upsideDrone(on) {
 
 // --- Normal-world music: an original 80s synth loop (drum machine, bass, arpeggio, pads).
 let music = null;
-const BPM = 108, STEP = 60 / BPM / 4;                       // 16th notes
+const BPM = 118, STEP = 60 / BPM / 4;                       // 16th notes
 const midi = n => 440 * Math.pow(2, (n - 69) / 12);
-// Original 8-bar progression: Am – F – C – G (two bars each).
-const CHORDS = [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]];
+// Original upbeat 8-bar progression: C – G – Am – F (two bars each).
+const CHORDS = [[60, 64, 67], [55, 59, 62], [57, 60, 64], [53, 57, 60]];
 const ARP = [0, 1, 2, 3, 2, 1, 0, 2];                        // index into chord tones (+octave)
 
 function mVoice(freq, t, dur, { type = 'sawtooth', vol = 0.05, cutoff = 2400, attack = 0.005 } = {}) {
@@ -147,10 +147,10 @@ function playStep(step, t) {
   if (s16 === 0 || s16 === 8 || (s16 === 10 && bar % 2)) kick(t);
   if (s16 === 4 || s16 === 12) { mNoise(t, 0.18, 0.22, 'bandpass', 1800); mVoice(190, t, 0.1, { type: 'triangle', vol: 0.08, cutoff: 1200 }); }
   if (s16 % 2 === 0) mNoise(t, 0.04, 0.06, 'highpass', 8000);
-  if (s16 % 2 === 0) mVoice(midi(chord[0] - 24 + (s16 % 4 === 2 ? 12 : 0)), t, STEP * 1.8, { vol: 0.09, cutoff: 900 });   // bass
+  if (s16 % 2 === 0) mVoice(midi(chord[0] - 12 + (s16 % 4 === 2 ? 12 : 0)), t, STEP * 0.8, { type: 'triangle', vol: 0.11, cutoff: 2200 });   // plucky bass, no low drone
   const n = ARP[s16 % ARP.length];
   mVoice(midi((n === 3 ? chord[0] + 12 : chord[n]) + 12), t, STEP * 0.9, { type: 'square', vol: 0.025, cutoff: 3200 });  // arpeggio
-  if (s16 === 0 && bar % 2 === 0) chord.forEach(c => mVoice(midi(c), t, STEP * 30, { type: 'triangle', vol: 0.025, cutoff: 1800, attack: 0.6 }));  // pad
+  if (s16 === 2 || s16 === 6 || s16 === 10 || s16 === 14) chord.forEach(c => mVoice(midi(c + 12), t, STEP * 0.7, { type: 'square', vol: 0.018, cutoff: 4000 }));  // bright off-beat chord stabs
 }
 
 export function musicStart() {
