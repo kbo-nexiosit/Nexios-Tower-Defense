@@ -472,8 +472,13 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  // Pointer in world space (the camera is mirrored in the Upside Down).
-  worldPoint(p) { return { x: p.worldX, y: p.worldY }; }
+  // Pointer in world space. In the Upside Down the vertical mouse axis is inverted: the board is
+  // mirrored on screen but the pointer is mapped as if it weren't, so the block moves opposite to the mouse.
+  worldPoint(p) {
+    const cam = this.cameras.main;
+    if (!CONFIG.flip.invertMouseY || cam.zoomY >= 0) return { x: p.worldX, y: p.worldY };
+    return { x: p.worldX, y: 2 * (cam.scrollY + cam.height / 2) - p.worldY };
+  }
   // While the board is nearly edge-on, clicks can't be mapped sensibly.
   midFlip() { return Math.abs(this.cameras.main.zoomY) < 0.5; }
 

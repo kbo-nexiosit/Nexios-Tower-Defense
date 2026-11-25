@@ -125,7 +125,7 @@ From level 9 the bosses repeat, 50% tougher per lap. Bosses that can't be hit at
   - Boss health thresholds no longer trigger it; that was a Bart-boss feature, removed with him.
 - **How it looks (owner):** the board **flips from bottom to top like a card** and shows its **mirrored backside**, as in the show. The camera zoomY tweens 1 → 0 → −1, with dark red vines, a red/cold tint, ash and red lightning flashes.
   - Messages (banners, tips, toasts) render in the UI scene so they stay readable.
-  - Clicks still land under the cursor on the mirrored board.
+  - **Inverted mouse (owner):** while the board is flipped, the vertical mouse axis is inverted: moving the mouse up moves the block down, and a click drops (or selects) where the block is, not under the cursor. Horizontal stays normal. Switch off with `CONFIG.flip.invertMouseY`.
 - **Gameplay:** monsters that spawn during it have **1.5× health and 1.3× speed** and keep them.
 - **Sound:** the game music goes muffled and a low drone plays. The drone fades out fully when the board flips back; an earlier bug left it hanging.
 
