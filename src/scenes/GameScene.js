@@ -70,7 +70,8 @@ export default class GameScene extends Phaser.Scene {
       this.input.keyboard.on('keydown-B', () => { if (!this.waveActive) { this.wave = CONFIG.waves.count - 1; this.wallet.earn(2000); this.emitAll(); this.startWave(); } });
     }
     this.emitAll();
-    sfx.ambient(true);
+    sfx.upsideDrone(false);
+    sfx.musicStart();
 
     // Upside Down: overlays sit above the town but below kids and monsters, so those stay readable.
     // The camera mirrors the board on a vertical squash (negative zoomY); culling must be off for that.
@@ -104,7 +105,8 @@ export default class GameScene extends Phaser.Scene {
     this.upside = true;
     this.upsideUntil = this.now + CONFIG.flip.durationMs;
     sfx.flip();
-    sfx.ambient(true, 0.12);
+    sfx.upsideDrone(true);
+    sfx.musicDuck(true);
     this.cameras.main.shake(400, 0.008);
     this.cardFlip(-1, () => {
       // Edge-on: the backside comes into view.
@@ -147,7 +149,8 @@ export default class GameScene extends Phaser.Scene {
 
   exitUpside() {
     this.upside = false;
-    sfx.ambient(true, 0.04);
+    sfx.upsideDrone(false);
+    sfx.musicDuck(false);
     this.lightning?.remove();
     this.cardFlip(1, () => {
       this.coldLayer.setAlpha(0); this.redLayer.setAlpha(0); this.vines.setAlpha(0);
@@ -399,7 +402,8 @@ export default class GameScene extends Phaser.Scene {
   endGame(won) {
     if (this.over) return;
     this.over = true;
-    sfx.ambient(false);
+    sfx.upsideDrone(false);
+    sfx.musicStop();
     this.time.delayedCall(600, () => { this.scene.stop('UI'); this.scene.start('End', { won, wave: this.wave }); });
   }
 

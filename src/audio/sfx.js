@@ -46,13 +46,17 @@ function noise({ dur = 0.3, vol = 0.3, at = 0, filter = 'lowpass', from = 2000, 
   s.start(t); s.stop(t + dur + 0.05);
 }
 
-// The Nexios victory bell: inharmonic partials of a church-style bell.
+// The Nexios victory bell: a bright hand bell struck twice — "ting ting".
 export function bell(at = 0) {
   if (!ready()) return;
-  const f = 520;
-  [[0.5, 0.25, 3.2], [1, 0.35, 2.6], [2.0, 0.12, 1.6], [2.76, 0.14, 1.4], [5.4, 0.06, 0.8]]
-    .forEach(([m, vol, dur]) => tone(f * m, { vol, dur, at }));
-  noise({ dur: 0.05, vol: 0.2, at, filter: 'highpass', from: 4000, to: 3000 });
+  const strike = t => {
+    const f = 1568;   // G6
+    [[1, 0.24, 1.5], [2.0, 0.07, 0.9], [2.76, 0.10, 0.7], [4.07, 0.05, 0.45], [5.4, 0.03, 0.3]]
+      .forEach(([m, vol, dur]) => tone(f * m, { vol, dur, at: t, attack: 0.002 }));
+    noise({ dur: 0.02, vol: 0.12, at: t, filter: 'highpass', from: 7000, to: 6000 });
+  };
+  strike(at);
+  strike(at + 0.17);
 }
 
 export function shot() {
@@ -89,17 +93,95 @@ export function boss() {
   tone(110, { type: 'square', dur: 2.0, vol: 0.05, attack: 0.5, at: 0.3 });
 }
 
-// Low ambient synth drone; louder while the Upside Down is active.
-export function ambient(on, intensity = 0.04) {
+// --- Upside Down drone: only while the board is flipped, fades to silence on the way back.
+let upDrone = null;
+export function upsideDrone(on) {
   if (!ctx) return;
-  if (on && !drone) {
+  if (on && !upDrone) {
     const g = ctx.createGain(); g.gain.value = 0.0001;
     const a = ctx.createOscillator(), b = ctx.createOscillator(), lp = ctx.createBiquadFilter();
-    a.type = 'sawtooth'; a.frequency.value = 73.4; b.type = 'sawtooth'; b.frequency.value = 110.2;
-    lp.type = 'lowpass'; lp.frequency.value = 500;
+    a.type = 'sawtooth'; a.frequency.value = 55; b.type = 'sawtooth'; b.frequency.value = 58.3;
+    lp.type = 'lowpass'; lp.frequency.value = 380;
     a.connect(lp); b.connect(lp); lp.connect(g).connect(master); a.start(); b.start();
-    drone = { g, a, b };
+    upDrone = { g, a, b };
   }
-  if (drone) drone.g.gain.setTargetAtTime(on ? intensity : 0.0001, ctx.currentTime, 0.5);
+  if (!upDrone) return;
+  upDrone.g.gain.cancelScheduledValues(ctx.currentTime);
+  upDrone.g.gain.setTargetAtTime(on ? 0.13 : 0.0001, ctx.currentTime, on ? 0.4 : 0.25);
+  if (!on) {
+    const d = upDrone; upDrone = null;
+    setTimeout(() => { try { d.a.stop(); d.b.stop(); } catch {} }, 2500);   // fully gone after the fade
+  }
 }
+
+// --- Normal-world music: an original 80s synth loop (drum machine, bass, arpeggio, pads).
+let music = null;
+const BPM = 108, STEP = 60 / BPM / 4;                       // 16th notes
+const midi = n => 440 * Math.pow(2, (n - 69) / 12);
+// Original 8-bar progression: Am – F – C – G (two bars each).
+const CHORDS = [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]];
+const ARP = [0, 1, 2, 3, 2, 1, 0, 2];                        // index into chord tones (+octave)
+
+function mVoice(freq, t, dur, { type = 'sawtooth', vol = 0.05, cutoff = 2400, attack = 0.005 } = {}) {
+  const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  f.type = 'lowpass'; f.frequency.setValueAtTime(cutoff, t); f.frequency.exponentialRampToValueAtTime(Math.max(200, cutoff * 0.25), t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(f).connect(g).connect(music.bus); o.start(t); o.stop(t + dur + 0.05);
+}
+function mNoise(t, dur, vol, type, freq) {
+  const s = ctx.createBufferSource(); s.buffer = noiseBuf;
+  const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq;
+  const g = ctx.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(f).connect(g).connect(music.bus); s.start(t); s.stop(t + dur + 0.02);
+}
+function kick(t) {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.18);
+  g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+  o.connect(g).connect(music.bus); o.start(t); o.stop(t + 0.32);
+}
+function playStep(step, t) {
+  const bar = Math.floor(step / 16), s16 = step % 16;
+  const chord = CHORDS[Math.floor(bar / 2) % CHORDS.length];
+  if (s16 === 0 || s16 === 8 || (s16 === 10 && bar % 2)) kick(t);
+  if (s16 === 4 || s16 === 12) { mNoise(t, 0.18, 0.22, 'bandpass', 1800); mVoice(190, t, 0.1, { type: 'triangle', vol: 0.08, cutoff: 1200 }); }
+  if (s16 % 2 === 0) mNoise(t, 0.04, 0.06, 'highpass', 8000);
+  if (s16 % 2 === 0) mVoice(midi(chord[0] - 24 + (s16 % 4 === 2 ? 12 : 0)), t, STEP * 1.8, { vol: 0.09, cutoff: 900 });   // bass
+  const n = ARP[s16 % ARP.length];
+  mVoice(midi((n === 3 ? chord[0] + 12 : chord[n]) + 12), t, STEP * 0.9, { type: 'square', vol: 0.025, cutoff: 3200 });  // arpeggio
+  if (s16 === 0 && bar % 2 === 0) chord.forEach(c => mVoice(midi(c), t, STEP * 30, { type: 'triangle', vol: 0.025, cutoff: 1800, attack: 0.6 }));  // pad
+}
+
+export function musicStart() {
+  if (!ctx || music) return;
+  const bus = ctx.createGain(), lp = ctx.createBiquadFilter(), out = ctx.createGain();
+  lp.type = 'lowpass'; lp.frequency.value = 12000;
+  out.gain.value = 0.0001; out.gain.setTargetAtTime(0.9, ctx.currentTime, 0.8);
+  bus.connect(lp).connect(out).connect(master);
+  music = { bus, lp, out, next: ctx.currentTime + 0.1, step: 0 };
+  music.timer = setInterval(() => {
+    if (!music || ctx.state !== 'running') return;
+    if (music.next < ctx.currentTime) music.next = ctx.currentTime + 0.05;   // after a stall, don't play catch-up
+    while (music.next < ctx.currentTime + 0.25) { playStep(music.step, music.next); music.next += STEP; music.step = (music.step + 1) % 128; }
+  }, 50);
+}
+
+// In the Upside Down the music goes muffled and distant.
+export function musicDuck(on) {
+  if (!music) return;
+  const t = ctx.currentTime;
+  music.lp.frequency.setTargetAtTime(on ? 450 : 12000, t, 0.3);
+  music.out.gain.setTargetAtTime(on ? 0.35 : 0.9, t, 0.3);
+}
+
+export function musicStop() {
+  if (!music) return;
+  const m = music; music = null;
+  clearInterval(m.timer);
+  m.out.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.3);
+  setTimeout(() => { try { m.out.disconnect(); } catch {} }, 2000);
+}
+
 export const audioState = () => (ctx ? ctx.state : 'none');   // for testing
+export const audioDebug = () => ({ ctx: ctx ? ctx.state : 'none', music: !!music, musicOut: music ? +music.out.gain.value.toFixed(3) : 0, musicCutoff: music ? Math.round(music.lp.frequency.value) : 0, drone: !!upDrone, droneGain: upDrone ? +upDrone.g.gain.value.toFixed(3) : 0 });   // for testing
