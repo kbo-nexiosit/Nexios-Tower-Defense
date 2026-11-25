@@ -12,3 +12,4 @@ Things that worked, then broke, and why. Bootcamp Day 5, 2026-11-25.
 - Title flashlight beams pointed back at the kids (triangle origin quirk). Fix: define the tip at the left edge.
 - The low Upside Down drone was the shared background hum, only turned down on flip-back, so it seemed to hang. Fix: separate Upside Down drone that fades to silence and stops; normal world now has its own (original) synth music.
 - Maze rework: first balance sim lost on wave 4 — with only a few blocks the open-field route is short. Fix: start with 160 tokens (sim: good build wins 11/20).
+- Endless run: boss and bell first stood on top of the NEXIOS IT logo on the roof. Fix: smaller logo shifted left, Bart and the bell beside it.
