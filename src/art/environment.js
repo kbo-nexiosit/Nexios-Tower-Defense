@@ -198,3 +198,46 @@ export function makeVignette(scene) {
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   tex.refresh();
 }
+
+// Maze version: an open field with a faint grid, fixed houses (2x2) and trees (1x1) as obstacles.
+export function makeMazeGround(scene, maze, { office: of, media: md }) {
+  if (scene.textures.exists('maze-ground')) return;
+  const tex = scene.textures.createCanvas('maze-ground', W, H);
+  const ctx = tex.getContext();
+  const img = ctx.createImageData(W, H);
+  const r = rng(1984);
+  const grass = ['#12211a', '#142519', '#10201a', '#16281c'].map(hexRGB);
+  const cellA = maze.cell / S, x0 = maze.x0 / S, y0 = maze.y0 / S;
+  const [sc, sr] = maze.spawn;
+  const sx = x0 + sc * cellA + cellA / 2, sy = y0 + sr * cellA + cellA / 2;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = (y * W + x) * 4;
+    let c = grass[Math.floor(r() * grass.length)];
+    if (r() < 0.025) c = hexRGB('#22402a');
+    const gx = x - x0, gy = y - y0;
+    if (gx >= 0 && gy >= 0 && gx < maze.cols * cellA && gy < maze.rows * cellA) {
+      const checker = (Math.floor(gx / cellA) + Math.floor(gy / cellA)) % 2;
+      if (checker) c = c.map(v => Math.min(255, v + 4));
+      if (gx % cellA === 0 || gy % cellA === 0) c = c.map(v => Math.min(255, v + 9));   // faint grid lines
+    }
+    const rd = Math.hypot(x - sx, (y - sy) * 0.7);                                    // scorched earth at the Rift
+    if (rd < 28 && r() < 1 - rd / 28) c = hexRGB('#2a1014');
+    img.data[i] = c[0]; img.data[i + 1] = c[1]; img.data[i + 2] = c[2]; img.data[i + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  const roofs = ['#6a2e2e', '#3e3a62', '#2e523e', '#5a4a2e'], walls = ['#9a8a70', '#7a8496', '#8a7068', '#7a8a78'];
+  maze.houses.forEach(([c, rr], n) => {
+    const hx = x0 + c * cellA, hy = y0 + rr * cellA;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(hx + 4, hy + 28, 26, 3);
+    house(r, roofs[n % roofs.length], walls[(n * 3) % walls.length]).draw(ctx, hx + 3, hy + 6, 1);
+  });
+  maze.trees.forEach(([c, rr], n) => {
+    const t = tree(n % 3 === 0 ? 1 : 0);
+    const tx = x0 + c * cellA + Math.floor((cellA - t.w) / 2), ty = y0 + rr * cellA + cellA - t.h;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(tx + 2, ty + t.h - 1, t.w - 3, 2);
+    t.draw(ctx, tx, ty, 1);
+  });
+  office(Math.round(of.w / S), Math.round(of.h / S)).draw(ctx, Math.round(of.x / S), Math.round(of.y / S), 1);
+  mediaBlock(Math.round(md.w / S), Math.round(md.h / S)).draw(ctx, Math.round(md.x / S), Math.round(md.y / S), 1);
+  tex.refresh();
+}

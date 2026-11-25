@@ -238,3 +238,25 @@ export function sword() {
 }
 
 export function pebble() { return new Pix(3, 3).rect(0, 0, 3, 3, '#d8d0c4').set(2, 2, '#8a8478'); }
+
+// --- Maze blocks --------------------------------------------------------------
+export const KID_COLOURS = { slingshot: C.blue, walkie: C.green, psychic: C.purple, lights: C.yellow };
+
+export function crateTile(band) {
+  const p = new Pix(16, 16);
+  p.rect(0, 0, 16, 16, '#7a5230');
+  p.rect(0, 0, 16, 1, '#a8774a').rect(0, 0, 1, 16, '#a8774a');
+  p.rect(0, 15, 16, 1, '#4a2e18').rect(15, 0, 1, 16, '#4a2e18');
+  p.line(1, 1, 14, 14, '#5c3c20').line(14, 1, 1, 14, '#5c3c20');
+  p.rect(0, 6, 16, 4, band).rect(0, 6, 16, 1, shadeHex(band, 1.3)).rect(0, 9, 16, 1, shadeHex(band, 0.6));
+  [[2, 2], [13, 2], [2, 13], [13, 13]].forEach(([x, y]) => p.set(x, y, '#d8c8a0'));
+  return p;
+}
+
+export function wallTile() {
+  const p = new Pix(16, 16);
+  p.rect(0, 0, 16, 16, '#3a3640');
+  for (let r = 0; r < 4; r++) { const off = r % 2 ? 4 : 0; p.rect(0, r * 4, 16, 1, '#26232c'); for (let x = off; x < 16; x += 8) p.rect(x, r * 4, 1, 4, '#26232c'); }
+  p.rect(0, 0, 16, 1, '#55505c');
+  return p;
+}

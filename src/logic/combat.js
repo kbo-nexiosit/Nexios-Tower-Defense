@@ -75,3 +75,21 @@ export function sauce(e, now) {
   e.saucedUntil = now + CONFIG.pizza.saucedMs;
   return applyDamage(e, CONFIG.pizza.damage, now);
 }
+
+// Blocks fire from their edge squares: target the furthest-along enemy within range
+// of any edge, shooting from the edge square nearest to it.
+export function pickTargetFrom(origins, range, enemies) {
+  let best = null;
+  for (const e of enemies) {
+    if (!e.alive) continue;
+    let near = null, nd = Infinity;
+    for (const o of origins) { const d = Math.hypot(e.x - o.x, e.y - o.y); if (d < nd) { nd = d; near = o; } }
+    if (!near || nd > range) continue;
+    if (!best || e.distance > best.target.distance) best = { target: e, origin: near };
+  }
+  return best;
+}
+
+export function inRangeOfAny(origins, range, enemies) {
+  return enemies.filter(e => e.alive && origins.some(o => Math.hypot(e.x - o.x, e.y - o.y) <= range));
+}

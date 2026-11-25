@@ -1,12 +1,13 @@
 import CONFIG from '../config.js';
-import { ROAD, pointAt, roadLength } from '../logic/path.js';
+import { pointAt, roadLength } from '../logic/path.js';
 
-// The Pizza Hut van drives from the office back along the road to the Rift,
-// spraying tomato sauce on every monster it passes (each one once per run).
-export function spawnVan(scene) {
-  const total = roadLength(ROAD);
-  const start = pointAt(ROAD, total);
+// The Pizza Hut van drives from the office back along the monsters' current route
+// to the Rift, spraying tomato sauce on every monster it passes (each one once per run).
+export function spawnVan(scene, path) {
+  const total = roadLength(path);
+  const start = pointAt(path, total);
   const van = {
+    path,
     distance: total,
     sauced: new Set(),
     lastSplat: total,
@@ -20,9 +21,9 @@ export function spawnVan(scene) {
 
 // Returns enemies to sauce this frame.
 export function stepVan(scene, van, dtMs, enemies) {
-  const prev = pointAt(ROAD, van.distance);
+  const prev = pointAt(van.path, van.distance);
   van.distance -= CONFIG.pizza.speed * dtMs / 1000;
-  const p = pointAt(ROAD, Math.max(0, van.distance));
+  const p = pointAt(van.path, Math.max(0, van.distance));
   van.sprite.setPosition(p.x, p.y).setRotation(Math.atan2(p.y - prev.y, p.x - prev.x));
   van.label.setPosition(p.x, p.y - 22);
   if (van.lastSplat - van.distance > 26) {

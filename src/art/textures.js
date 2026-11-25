@@ -29,6 +29,8 @@ export function makeTextures(scene) {
   pixTexture(scene, 'bell', [S.bell()]);
   pixTexture(scene, 'sword', [S.sword()]);
   pixTexture(scene, 'pebble', [S.pebble()]);
+  Object.entries(S.KID_COLOURS).forEach(([k, col]) => pixTexture(scene, 'tile-' + k, [S.crateTile(col)]));
+  pixTexture(scene, 'tile-wall', [S.wallTile()]);
   tiny(scene, 'dot', 4, 4, '#ffffff');
   tiny(scene, 'ash', 3, 3, '#cfc8d6');
   if (!scene.textures.exists('sauce')) pixTexture(scene, 'sauce', [new Pix(4, 4).rect(1, 0, 2, 4, '#d1201a').rect(0, 1, 4, 2, '#d1201a')], 1);

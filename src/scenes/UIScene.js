@@ -2,6 +2,7 @@ import CONFIG from '../config.js';
 import { HUD_H } from './GameScene.js';
 import * as sfx from '../audio/sfx.js';
 import { upgradeCost } from '../logic/combat.js';
+import { SHAPES, rotate } from '../logic/tetromino.js';
 
 const FONT = { fontFamily: '"VT323", monospace', fontSize: '22px', color: '#e8e8f0' };
 export const TOWER_INFO = [
@@ -58,6 +59,15 @@ export default class UIScene extends Phaser.Scene {
       .setOrigin(0.5).setShadow(0, 0, '#ff2a3a', 16, true, true).setVisible(false);
     this.upsidePulse = this.tweens.add({ targets: this.upsideTxt, alpha: 0.4, duration: 450, yoyo: true, repeat: -1, paused: true });
 
+    // Block preview (current + next), bottom-left; and the "choose a kid" hint.
+    this.shapePanel = this.add.rectangle(8, 712, 196, 70, 0x07070d, 0.8).setOrigin(0, 1).setStrokeStyle(1, 0xff3fa4, 0.6);
+    this.add.text(16, 648, 'BLOCK', { ...FONT, fontSize: '16px', color: '#ffd84a' });
+    this.add.text(112, 648, 'NEXT', { ...FONT, fontSize: '16px', color: '#9aa0b8' });
+    this.add.text(16, 694, 'R / right-click: rotate', { ...FONT, fontSize: '13px', color: '#9aa0b8' });
+    this.shapeGfx = this.add.graphics();
+    this.pickHint = this.add.text(640, 84, 'Choose a kid for this block  (1-4)  •  Esc cancels', { ...FONT, fontSize: '22px', color: '#ffd84a', stroke: '#000', strokeThickness: 4 })
+      .setOrigin(0.5).setVisible(false);
+
     // Mute toggle.
     const mute = this.add.text(1254, 28, sfx.isMuted() ? '🔇' : '🔊', { fontSize: '22px' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     mute.on('pointerdown', () => { sfx.setMuted(!sfx.isMuted()); mute.setText(sfx.isMuted() ? '🔇' : '🔊'); });
@@ -92,6 +102,12 @@ export default class UIScene extends Phaser.Scene {
       if (active) { this.upsideTxt.setText('THE UPSIDE DOWN'); this.upsideTxt.setVisible(true); this.upsidePulse.resume(); }
       else { this.upsideTxt.setVisible(false); this.upsidePulse.pause(); }
     });
+    on('picking', on => {
+      this.picking = on; this.refreshButtons();
+      this.pickHint.setVisible(on);
+      this.towerButtons.forEach(b => { this.tweens.killTweensOf(b.bg); b.bg.setAlpha(1); if (on && this.tokens >= b.cost) this.tweens.add({ targets: b.bg, alpha: 0.55, duration: 300, yoyo: true, repeat: -1 }); });
+    });
+    on('shapes', ({ current, next, rot }) => this.drawShapes(current, next, rot));
     on('towerSelected', t => { this.selectedTower = t; this.refreshUpgrade(); });
     on('waveState', active => {
       this.startBtn.setVisible(!active); this.startTxt.setVisible(!active);
@@ -106,7 +122,7 @@ export default class UIScene extends Phaser.Scene {
     const icon = this.add.image(x - 30, 28, info.type);
     icon.setScale(Math.min(30 / icon.width, 38 / icon.height));
     const label = this.add.text(x - 12, 12, `${info.label}\n${cost} tok`, { ...FONT, fontSize: '16px' });
-    bg.on('pointerdown', () => { this.registry.set('selected', info.type); this.refreshButtons(); });
+    bg.on('pointerdown', () => this.scene.get('Game').chooseKid(info.type));
     return { ...info, cost, bg, icon, label };
   }
 
@@ -115,6 +131,15 @@ export default class UIScene extends Phaser.Scene {
     this.swordBtn.setStrokeStyle(2, ready ? 0xdfe6ee : 0x3a3a55).setFillStyle(ready ? 0x2a3550 : 0x10141c).setAlpha(1);
     this.swordTxt.setAlpha(ready ? 1 : 0.35);
     if (ready) this.swordGlow.resume(); else { this.swordGlow.pause(); this.swordBtn.setAlpha(1); }
+  }
+
+  drawShapes(current, next, rot) {
+    const g = this.shapeGfx.clear();
+    const draw = (name, r, x, y, size, col) => {
+      rotate(SHAPES[name], r).forEach(([c, rr]) => { g.fillStyle(col, 1).fillRect(x + c * size, y + rr * size, size - 2, size - 2); });
+    };
+    draw(current, rot, 18, 668, 7, 0xffd84a);
+    draw(next, 0, 114, 668, 7, 0x6a6e80);
   }
 
   refreshUpgrade() {
@@ -130,10 +155,9 @@ export default class UIScene extends Phaser.Scene {
 
   refreshButtons() {
     this.pizzaTxt?.setAlpha(this.tokens >= CONFIG.pizza.cost ? 1 : 0.45);
-    const sel = this.registry.get('selected');
     for (const b of this.towerButtons ?? []) {
       const afford = this.tokens >= b.cost;
-      b.bg.setStrokeStyle(2, b.type === sel ? 0xff3fa4 : 0x3a3a55);
+      b.bg.setStrokeStyle(2, this.picking && afford ? 0xffd84a : 0x3a3a55);
       b.icon.setAlpha(afford ? 1 : 0.35); b.label.setAlpha(afford ? 1 : 0.45);
     }
   }

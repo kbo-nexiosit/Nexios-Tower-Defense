@@ -1,6 +1,12 @@
 // All tuning numbers live here.
 const CONFIG = {
   world: { width: 1280, height: 720 },
+  // The maze: a grid between the Rift (spawn, left) and the NexiosIT office (goal, right).
+  maze: {
+    cell: 32, x0: 0, y0: 64, cols: 33, rows: 20, spawn: [0, 10], goal: [32, 10],
+    houses: [[4, 2], [9, 15], [14, 4], [19, 13], [23, 3], [27, 15], [6, 7]],   // 2x2 fixed obstacles
+    trees: [[2, 16], [11, 8], [16, 17], [21, 8], [26, 9], [29, 5], [12, 1], [30, 18], [8, 12], [17, 1], [25, 12], [3, 5]],
+  },
   startTokens: 120, baseHealth: 20,
   towers: {
     slingshot: { cost: 25, range: 110, damage: 6,  fireMs: 400,  levels: [{ cost: 30, damage: 10 }, { cost: 50, damage: 16, range: 130 }] },
@@ -9,10 +15,10 @@ const CONFIG = {
     lights:    { cost: 60, range: 80,  damage: 3,  stunMs: 600,  pulseMs: 3000, levels: [{ cost: 50, stunMs: 900 }, { cost: 80, stunMs: 1200, range: 100 }] },
   },
   enemies: {
-    crawler: { hp: 20, speed: 90,  reward: 4, leak: 1 },
-    brute:   { hp: 90, speed: 45,  reward: 9, leak: 3 },
-    swarm:   { hp: 10, speed: 120, reward: 2, leak: 1 },
-    boss:    { hp: 4000, speed: 20, reward: 0, leak: 20 },
+    crawler: { hp: 20, speed: 80,  reward: 4, leak: 1 },
+    brute:   { hp: 90, speed: 42,  reward: 9, leak: 3 },
+    swarm:   { hp: 10, speed: 55, reward: 2, leak: 1 },     // flies straight over the maze
+    boss:    { hp: 4000, speed: 9, reward: 0, leak: 20 },     // flies straight over the maze
   },
   waves: { count: 10, hpScalePerWave: 0.12, gapMs: 700, clearBonusBase: 10, clearBonusPerWave: 3 },
   boss: { thresholds: [0.75, 0.5, 0.25] },

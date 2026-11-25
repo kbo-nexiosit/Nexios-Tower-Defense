@@ -1,31 +1,25 @@
 import CONFIG from '../config.js';
-import { ROAD } from '../logic/path.js';
 import { createWallet } from '../logic/economy.js';
-import { applyDamage, canPlace } from '../logic/combat.js';
+import { applyDamage, upgradeCost, sauce } from '../logic/combat.js';
 import { makeTextures, PALETTE, PIXEL_FONT } from '../art/textures.js';
-import { makeGround, makeVignette } from '../art/environment.js';
-
-const OFFICE = { x: 1094, y: 300, w: 170, h: 226 };
-const MEDIA = { x: 1094, y: 70, w: 170, h: 186 };
-import { spawnEnemy, stepEnemy, removeEnemy, enemyReward, enemyLeak } from '../entities/Enemy.js';
-import { placeTower, stepTower, upgradeTowerStats } from '../entities/Tower.js';
-import { upgradeCost, sauce } from '../logic/combat.js';
+import { makeMazeGround, makeVignette } from '../art/environment.js';
+import { spawnEnemy, stepEnemy, removeEnemy, enemyReward, enemyLeak, enemyCells } from '../entities/Enemy.js';
+import { placeBlock as placeBlockEntity, refreshBlock, stepTower, upgradeTowerStats } from '../entities/Tower.js';
 import { spawnVan, stepVan } from '../entities/PizzaVan.js';
 import { crossedThresholds } from '../logic/boss.js';
 import { createSword } from '../logic/sword.js';
 import { rollFlip, flipModifiers } from '../logic/flip.js';
 import { waveSchedule, clearBonus } from '../logic/waves.js';
+import { createGrid, setObstacles, placeBlock as placeOnGrid, distanceField, canPlace, routeFrom } from '../logic/grid.js';
+import { SHAPES, createBag, cellsAt, rotate } from '../logic/tetromino.js';
 import * as sfx from '../audio/sfx.js';
 
+const OFFICE = { x: 1094, y: 300, w: 170, h: 226 };
+const MEDIA = { x: 1094, y: 70, w: 170, h: 186 };
 export const HUD_H = 56;
-// Areas where kids cannot stand: the HUD, the office, the DPG building, the rift.
-const BLOCKED = [
-  { x: 0, y: 0, w: 1280, h: HUD_H + 8 },
-  { x: 1080, y: 60, w: 200, h: 205 },   // DPG Media
-  { x: 1080, y: 285, w: 200, h: 250 },  // NexiosIT office
-  { x: 0, y: 100, w: 50, h: 100 },      // the Rift
-];
-const inRect = (p, r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+const M = CONFIG.maze;
+const KIDS = ['slingshot', 'walkie', 'psychic', 'lights'];
+const MIN_KID_COST = Math.min(...KIDS.map(k => CONFIG.towers[k].cost));
 
 export default class GameScene extends Phaser.Scene {
   constructor() { super('Game'); }
@@ -35,7 +29,18 @@ export default class GameScene extends Phaser.Scene {
     this.wallet = createWallet(CONFIG.startTokens);
     this.health = CONFIG.baseHealth;
     this.enemies = [];
-    this.towers = [];
+    this.towers = [];          // placed blocks (each run by one kid)
+    this.grid = createGrid(M.cols, M.rows);
+    const obstacles = [];
+    M.houses.forEach(([c, r]) => obstacles.push([c, r], [c + 1, r], [c, r + 1], [c + 1, r + 1]));
+    M.trees.forEach(t => obstacles.push(t));
+    setObstacles(this.grid, obstacles);
+    this.dist = distanceField(this.grid, M.goal);
+    this.bag = createBag();
+    this.shape = this.bag.next();
+    this.rot = 0;
+    this.nextId = 1;
+    this.picking = null;       // cells of a dropped block waiting for its kid
     this.over = false;
     this.now = 0;
     this.bossDefeated = false;
@@ -51,15 +56,21 @@ export default class GameScene extends Phaser.Scene {
     this.waveActive = false;
     this.pendingSpawns = 0;
     this.leaksThisWave = 0;
-    this.registry.set('selected', 'slingshot');
 
     this.drawMap();
-    this.ghost = this.add.circle(0, 0, 10, 0xffffff, 0.12).setStrokeStyle(2, 0xffffff, 0.5).setDepth(20).setVisible(false);
-    this.rangeRing = this.add.circle(0, 0, 10).setStrokeStyle(2, PALETTE.neonCyan, 0.8).setDepth(3).setVisible(false);
+    this.routeGfx = this.add.graphics().setDepth(0.6);
+    this.ghost = [0, 1, 2, 3].map(() => this.add.rectangle(0, 0, M.cell - 2, M.cell - 2, 0xffffff, 0.35).setStrokeStyle(2, 0xffffff, 0.8).setDepth(20).setVisible(false));
+    this.rangeGfx = this.add.graphics().setDepth(3.95);
+    this.drawRoute();
 
+    this.input.mouse?.disableContextMenu();
     this.input.on('pointermove', p => this.updateGhost(p));
-    this.input.on('pointerdown', p => { sfx.unlock(); this.tryPlace(p); });
+    this.input.on('pointerdown', p => { sfx.unlock(); if (p.rightButtonDown()) this.rightClick(p); else this.tryPlace(p); });
+    this.input.on('wheel', () => this.rotatePiece());
     this.input.keyboard.on('keydown', () => sfx.unlock());
+    this.input.keyboard.on('keydown-R', () => this.rotatePiece());
+    this.input.keyboard.on('keydown-ESC', () => this.cancelPick());
+    KIDS.forEach((k, i) => this.input.keyboard.on('keydown-' + ['ONE', 'TWO', 'THREE', 'FOUR'][i], () => this.chooseKid(k)));
 
     this.scene.launch('UI');
     this.input.keyboard.on('keydown-SPACE', () => this.startWave());
@@ -70,6 +81,7 @@ export default class GameScene extends Phaser.Scene {
       this.input.keyboard.on('keydown-B', () => { if (!this.waveActive) { this.wave = CONFIG.waves.count - 1; this.wallet.earn(2000); this.emitAll(); this.startWave(); } });
     }
     this.emitAll();
+    this.emitShapes();
     sfx.upsideDrone(false);
     sfx.musicStart();
 
@@ -181,8 +193,8 @@ export default class GameScene extends Phaser.Scene {
       });
     }
     this.game.events.emit('wave', this.wave);
-    if (this.wave === 1) this.tip('Click beside the road to place kids. Click a kid to upgrade it.');
-    if (this.wave === 3) this.tip('Tip: upgraded kids hit much harder. Save the Nexios Sword for something big.');
+    if (this.wave === 1) this.tip('Drop blocks to build a maze (R rotates), then pick a kid for each block.');
+    if (this.wave === 3) this.tip('Only edge squares fire — squares walled in by other blocks go quiet.');
     if (this.wave === CONFIG.waves.count) this.tip('Something big is coming through the Rift…');
     this.game.events.emit('waveState', true);
   }
@@ -237,7 +249,7 @@ export default class GameScene extends Phaser.Scene {
     if (this.over || this.now < this.pizzaReadyAt || !this.enemies.some(e => e.alive)) return;
     if (!this.wallet.spend(CONFIG.pizza.cost)) return;
     this.pizzaReadyAt = this.now + CONFIG.pizza.cooldownMs;
-    this.vans.push(spawnVan(this));
+    this.vans.push(spawnVan(this, routeFrom(this.grid, this.dist, M.spawn).map(c => this.cellCenter(c))));
     this.game.events.emit('tokens', this.wallet.tokens);
     this.game.events.emit('pizza', CONFIG.pizza.cooldownMs);
     this.ui.toast('The kids ordered Pizza Hut. Extra sauce.');
@@ -281,27 +293,24 @@ export default class GameScene extends Phaser.Scene {
     this.game.events.emit('health', this.health);
   }
 
-  drawMap() {
-    const LAMPS = [[120, 110], [300, 340], [210, 600], [490, 610], [590, 400], [690, 180], [870, 320], [770, 600], [960, 580], [1040, 440]];
-    makeGround(this, ROAD, { lamps: LAMPS, office: OFFICE, media: MEDIA });
-    makeVignette(this);
-    this.add.image(0, 0, 'ground').setOrigin(0).setScale(2).setDepth(0);
-    this.add.image(0, 0, 'vignette').setOrigin(0).setScale(2).setDepth(19);
-    // The Rift: a pulsing red gash with a dark core.
-    const rift = this.add.ellipse(14, 150, 34, 90, PALETTE.rift).setDepth(2);
-    this.add.ellipse(14, 150, 14, 70, 0x2a0008).setDepth(2);
-    this.tweens.add({ targets: rift, scaleX: 1.25, alpha: 0.7, yoyo: true, repeat: -1, duration: 700 });
-    this.drawStreetlights(LAMPS);
-    this.drawBuildings();
-  }
+  emitShapes() { this.game.events.emit('shapes', { current: this.shape, next: this.bag.peek(), rot: this.rot }); }
 
-  // Warm streetlight pools over the pixel lamp posts; a few flicker.
-  drawStreetlights(spots) {
-    spots.forEach(([x, y], i) => {
-      const glow = this.add.container(x, y).setDepth(1.6);
-      for (let r = 56, a = 0.025; r > 6; r -= 8, a += 0.012) glow.add(this.add.circle(0, 0, r, 0xffa84a, a).setBlendMode(Phaser.BlendModes.ADD));
-      if (i % 3 === 1) this.tweens.add({ targets: glow, alpha: 0.02, duration: 60, yoyo: true, repeat: -1, repeatDelay: Phaser.Math.Between(1500, 4000) });
-    });
+  // --- Grid helpers ---------------------------------------------------------
+  cellCenter([c, r]) { return { x: M.x0 + c * M.cell + M.cell / 2, y: M.y0 + r * M.cell + M.cell / 2 }; }
+  cellAt(p) { return [Math.floor((p.x - M.x0) / M.cell), Math.floor((p.y - M.y0) / M.cell)]; }
+  blockAt([c, r]) { return this.towers.find(b => b.cells.some(([bc, br]) => bc === c && br === r)); }
+
+  drawMap() {
+    makeMazeGround(this, M, { office: OFFICE, media: MEDIA });
+    makeVignette(this);
+    this.add.image(0, 0, 'maze-ground').setOrigin(0).setScale(2).setDepth(0);
+    this.add.image(0, 0, 'vignette').setOrigin(0).setScale(2).setDepth(19);
+    // The Rift at the spawn square: a pulsing red gash with a dark core.
+    const s = this.cellCenter(M.spawn);
+    const rift = this.add.ellipse(s.x, s.y, 30, 80, PALETTE.rift).setDepth(2);
+    this.add.ellipse(s.x, s.y, 12, 62, 0x2a0008).setDepth(2);
+    this.tweens.add({ targets: rift, scaleX: 1.25, alpha: 0.7, yoyo: true, repeat: -1, duration: 700 });
+    this.drawBuildings();
   }
 
   drawBuildings() {
@@ -311,42 +320,125 @@ export default class GameScene extends Phaser.Scene {
     this.officeFlash = this.add.rectangle(OFFICE.x + OFFICE.w / 2, OFFICE.y + OFFICE.h / 2, OFFICE.w, OFFICE.h, 0xff0000, 0).setDepth(3);
   }
 
-  isFree(p) {
-    if (p.x < 16 || p.x > 1264 || p.y > 704) return false;
-    if (BLOCKED.some(r => inRect(p, r))) return false;
-    return canPlace(p, this.towers, ROAD);
+  // The monsters' current route, worn into the grass as a dirt trail.
+  drawRoute() {
+    const pts = routeFrom(this.grid, this.dist, M.spawn).map(c => this.cellCenter(c));
+    const g = this.routeGfx.clear();
+    g.lineStyle(14, 0x3a2b20, 0.55);
+    for (let i = 1; i < pts.length; i++) g.lineBetween(pts[i - 1].x, pts[i - 1].y, pts[i].x, pts[i].y);
+    g.fillStyle(0x3a2b20, 0.55);
+    pts.forEach(p => g.fillCircle(p.x, p.y, 7));
   }
 
-  // Pointer in world space (the camera is rotated in the Upside Down).
+  // Pointer in world space (the camera is mirrored in the Upside Down).
   worldPoint(p) { return { x: p.worldX, y: p.worldY }; }
   // While the board is nearly edge-on, clicks can't be mapped sensibly.
   midFlip() { return Math.abs(this.cameras.main.zoomY) < 0.5; }
 
-  updateGhost(p) {
-    const type = this.registry.get('selected');
-    if (!type || p.y < HUD_H) { this.ghost.setVisible(false); return; }
-    const w = this.worldPoint(p);
-    const ok = this.isFree(w) && this.wallet.tokens >= CONFIG.towers[type].cost;
-    this.ghost.setPosition(w.x, w.y).setRadius(CONFIG.towers[type].range).setVisible(true)
-      .setFillStyle(ok ? 0xffffff : 0xff3030, 0.12).setStrokeStyle(2, ok ? 0xffffff : 0xff3030, 0.5);
+  // Cells the current piece would cover with the pointer near its middle.
+  pieceCells(p) {
+    const shape = rotate(SHAPES[this.shape], this.rot);
+    const w = Math.max(...shape.map(c => c[0])) + 1, h = Math.max(...shape.map(c => c[1])) + 1;
+    const [pc, pr] = this.cellAt(this.worldPoint(p));
+    return cellsAt(SHAPES[this.shape], this.rot, pc - Math.floor((w - 1) / 2), pr - Math.floor((h - 1) / 2));
   }
+
+  occupied() { return this.enemies.flatMap(enemyCells); }
+
+  placementCheck(cells) {
+    const res = canPlace(this.grid, cells, { spawn: M.spawn, goal: M.goal, occupied: this.occupied() });
+    if (res.ok && this.wallet.tokens < MIN_KID_COST) return { ok: false, reason: 'tokens' };
+    return res;
+  }
+
+  showGhost(cells, color) {
+    this.ghost.forEach((g, i) => {
+      const p = this.cellCenter(cells[i]);
+      g.setPosition(p.x, p.y).setFillStyle(color, 0.35).setStrokeStyle(2, color, 0.9).setVisible(true);
+    });
+  }
+
+  updateGhost(p) {
+    if (this.picking) return;
+    if (p.y < HUD_H || this.over) { this.ghost.forEach(g => g.setVisible(false)); return; }
+    const cells = this.pieceCells(p);
+    const onBlock = cells.length && this.blockAt(this.cellAt(this.worldPoint(p)));
+    const res = this.placementCheck(cells);
+    this.showGhost(cells, res.ok ? 0x6bff6b : 0xff3030);
+    this.ghost.forEach(g => g.setAlpha(onBlock ? 0.25 : 1));
+    this.lastPointer = p;
+  }
+
+  rotatePiece() {
+    if (this.picking || this.over) return;
+    this.rot = (this.rot + 1) % 4;
+    this.emitShapes();
+    if (this.lastPointer) this.updateGhost(this.lastPointer);
+  }
+
+  rightClick(p) { if (this.picking) this.cancelPick(); else this.rotatePiece(); }
 
   tryPlace(p) {
     if (this.over || p.y < HUD_H || this.midFlip()) return;
+    if (this.picking) return;                                    // choose a kid (or Esc) first
+    const clicked = this.blockAt(this.cellAt(this.worldPoint(p)));
+    if (clicked) { this.selectTower(clicked); return; }
     this.selectTower(null);
-    const type = this.registry.get('selected');
-    const w = this.worldPoint(p);
-    if (!type || !this.isFree(w)) return;
-    if (!this.wallet.spend(CONFIG.towers[type].cost)) return;
-    this.towers.push(placeTower(this, type, w.x, w.y));
+    const cells = this.pieceCells(p);
+    const res = this.placementCheck(cells);
+    if (!res.ok) {
+      const why = { 'blocks-path': 'That would block the path — the monsters must always get through.', enemy: 'A monster is in the way.', tokens: `You need at least ${MIN_KID_COST} tokens to man a block.` }[res.reason];
+      if (why) this.ui.toast(why);
+      return;
+    }
+    // Dropped: hold it in place until the player picks the kid who runs it.
+    this.picking = { cells };
+    this.showGhost(cells, 0xffd84a);
+    this.game.events.emit('picking', true);
+  }
+
+  cancelPick() {
+    if (!this.picking) return;
+    this.picking = null;
+    this.ghost.forEach(g => g.setVisible(false));
+    this.game.events.emit('picking', false);
+    if (this.lastPointer) this.updateGhost(this.lastPointer);
+  }
+
+  chooseKid(type) {
+    if (!this.picking || this.over) return;
+    const cost = CONFIG.towers[type].cost;
+    if (this.wallet.tokens < cost) { this.ui.toast(`Not enough tokens for that kid (${cost}).`); return; }
+    const { cells } = this.picking;
+    const res = canPlace(this.grid, cells, { spawn: M.spawn, goal: M.goal, occupied: this.occupied() });
+    if (!res.ok) { this.ui.toast('A monster walked into the spot — try again.'); this.cancelPick(); return; }
+    this.wallet.spend(cost);
+    const id = this.nextId++;
+    placeOnGrid(this.grid, cells, id);
+    this.towers.push(placeBlockEntity(this, type, cells, id));
+    this.recomputeMaze();
+    this.shape = this.bag.next();
+    this.rot = 0;
+    this.picking = null;
+    this.game.events.emit('picking', false);
     this.game.events.emit('tokens', this.wallet.tokens);
-    this.updateGhost(p);
+    this.emitShapes();
+    sfx.pulse();
+    if (this.lastPointer) this.updateGhost(this.lastPointer);
+  }
+
+  recomputeMaze() {
+    this.dist = distanceField(this.grid, M.goal);
+    this.towers.forEach(b => refreshBlock(this, b));
+    this.drawRoute();
   }
 
   selectTower(t) {
     this.selected = t;
-    if (!t) { this.rangeRing.setVisible(false); this.game.events.emit('towerSelected', null); return; }
-    this.rangeRing.setPosition(t.x, t.y).setRadius(t.range).setVisible(true);
+    const g = this.rangeGfx.clear();
+    if (!t) { this.game.events.emit('towerSelected', null); return; }
+    g.fillStyle(PALETTE.neonCyan, 0.05).lineStyle(1, PALETTE.neonCyan, 0.5);
+    t.edges.forEach(p => { g.fillCircle(p.x, p.y, t.range); g.strokeCircle(p.x, p.y, t.range); });
     this.game.events.emit('towerSelected', t);
   }
 
