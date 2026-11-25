@@ -123,41 +123,58 @@ export function setMusicMuted(m) {
   musicMuted = m;
   if (music) music.out.gain.setTargetAtTime(musicLevel(), ctx.currentTime, 0.1);
 }
-const BPM = 118, STEP = 60 / BPM / 4;                       // 16th notes
+const BPM = 106, STEP = 60 / BPM / 4;                       // 16th notes
 const midi = n => 440 * Math.pow(2, (n - 69) / 12);
-// Original upbeat 8-bar progression: C – G – Am – F (two bars each).
-const CHORDS = [[60, 64, 67], [55, 59, 62], [57, 60, 64], [53, 57, 60]];
-const ARP = [0, 1, 2, 3, 2, 1, 0, 2];                        // index into chord tones (+octave)
+// Original dark 8-bar progression in D minor: Dm – Bb – Gm – A (two bars each).
+const CHORDS = [[62, 65, 69], [58, 62, 65], [55, 58, 62], [57, 61, 64]];
+// Original sparse lead motif (scale steps above the chord root, per 2-bar phrase).
+const LEAD = [[0, 0, 12], [3, 7, 10], [6, 3, 7], [10, 10, 12], [16, 7, 8], [22, 5, 7], [26, 3, 7]];   // [step, semitones, len16]
 
-function mVoice(freq, t, dur, { type = 'sawtooth', vol = 0.05, cutoff = 2400, attack = 0.005 } = {}) {
+function mVoice(freq, t, dur, { type = 'sawtooth', vol = 0.05, cutoff = 2400, attack = 0.005, endCut = 0.25, detune = 0 } = {}) {
   const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
-  o.type = type; o.frequency.setValueAtTime(freq, t);
-  f.type = 'lowpass'; f.frequency.setValueAtTime(cutoff, t); f.frequency.exponentialRampToValueAtTime(Math.max(200, cutoff * 0.25), t + dur);
+  o.type = type; o.frequency.setValueAtTime(freq, t); o.detune.value = detune;
+  f.type = 'lowpass'; f.frequency.setValueAtTime(cutoff, t); f.frequency.exponentialRampToValueAtTime(Math.max(200, cutoff * endCut), t + dur);
   g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   o.connect(f).connect(g).connect(music.bus); o.start(t); o.stop(t + dur + 0.05);
 }
-function mNoise(t, dur, vol, type, freq) {
+function mNoise(t, dur, vol, type, freq, gated = false) {
   const s = ctx.createBufferSource(); s.buffer = noiseBuf;
   const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq;
-  const g = ctx.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(vol, t);
+  if (gated) { g.gain.setValueAtTime(vol * 0.6, t + dur * 0.9); g.gain.linearRampToValueAtTime(0.0001, t + dur); }   // 80s gated-reverb snare
+  else g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   s.connect(f).connect(g).connect(music.bus); s.start(t); s.stop(t + dur + 0.02);
 }
-function kick(t) {
+function drum(t, from, to, dur, vol) {
   const o = ctx.createOscillator(), g = ctx.createGain();
-  o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.18);
-  g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
-  o.connect(g).connect(music.bus); o.start(t); o.stop(t + 0.32);
+  o.type = 'sine'; o.frequency.setValueAtTime(from, t); o.frequency.exponentialRampToValueAtTime(to, t + dur * 0.7);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(music.bus); o.start(t); o.stop(t + dur + 0.02);
 }
+const kick = t => drum(t, 150, 45, 0.32, 0.55);
+const tom = (t, f) => { drum(t, f * 1.7, f, 0.38, 0.35); mNoise(t, 0.03, 0.08, 'bandpass', 2500); };
+// Detuned, brassy synth stab across three voices.
+function brass(chord, t, dur, vol) {
+  chord.forEach(n => [-9, 0, 9].forEach(d => mVoice(midi(n), t, dur, { vol, cutoff: 2600, endCut: 0.3, attack: 0.03, detune: d })));
+}
+
 function playStep(step, t) {
-  const bar = Math.floor(step / 16), s16 = step % 16;
+  const bar = Math.floor(step / 16), s16 = step % 16, phrase = step % 32;
   const chord = CHORDS[Math.floor(bar / 2) % CHORDS.length];
-  if (s16 === 0 || s16 === 8 || (s16 === 10 && bar % 2)) kick(t);
-  if (s16 === 4 || s16 === 12) { mNoise(t, 0.18, 0.22, 'bandpass', 1800); mVoice(190, t, 0.1, { type: 'triangle', vol: 0.08, cutoff: 1200 }); }
-  if (s16 % 2 === 0) mNoise(t, 0.04, 0.06, 'highpass', 8000);
-  if (s16 % 2 === 0) mVoice(midi(chord[0] - 12 + (s16 % 4 === 2 ? 12 : 0)), t, STEP * 0.8, { type: 'triangle', vol: 0.11, cutoff: 2200 });   // plucky bass, no low drone
-  const n = ARP[s16 % ARP.length];
-  mVoice(midi((n === 3 ? chord[0] + 12 : chord[n]) + 12), t, STEP * 0.9, { type: 'square', vol: 0.025, cutoff: 3200 });  // arpeggio
-  if (s16 === 2 || s16 === 6 || s16 === 10 || s16 === 14) chord.forEach(c => mVoice(midi(c + 12), t, STEP * 0.7, { type: 'square', vol: 0.018, cutoff: 4000 }));  // bright off-beat chord stabs
+  // Drums: heavy kick, big gated snare, rolling toms; a descending tom fill every 4th bar.
+  if (s16 === 0 || s16 === 7 || s16 === 8) kick(t);
+  if (s16 === 4 || s16 === 12) { mNoise(t, 0.32, 0.26, 'bandpass', 1500, true); drum(t, 230, 170, 0.12, 0.12); }
+  if (bar % 4 === 3 && s16 >= 12) tom(t, [190, 150, 120, 95][s16 - 12]);
+  else { if (s16 === 2 || s16 === 10) tom(t, 120); if (s16 === 14) tom(t, 95); }
+  if (s16 % 2 === 1) mNoise(t, 0.03, 0.035, 'highpass', 9000);
+  // Pulsing staccato bass (eighths, never sustained).
+  if (s16 % 2 === 0) mVoice(midi(chord[0] - 12 + (s16 === 14 ? 12 : 0)), t, STEP * 0.9, { type: 'square', vol: 0.07, cutoff: 1400, endCut: 0.4 });
+  // Brass stabs on a syncopated rhythm.
+  if (s16 === 0) brass(chord, t, STEP * 5, 0.012);
+  if (s16 === 6 || s16 === 11) brass(chord, t, STEP * 1.6, 0.010);
+  // Sparse, haunting lead line over each two-bar phrase.
+  for (const [at, semi, len] of LEAD) if (at === phrase) mVoice(midi(chord[0] + 12 + semi), t, STEP * len, { type: 'triangle', vol: 0.05, cutoff: 5000, endCut: 0.6, attack: 0.02 });
 }
 
 export function musicStart() {
